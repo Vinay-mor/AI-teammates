@@ -19,3 +19,15 @@ To use the components in your app, import them as follows:
 ```tsx
 import { Button } from "@/components/ui/button";
 ```
+
+## Database
+
+Neon is connected through Drizzle ORM and node-postgres. The server-only database client is exported from `@/db`, and PostgreSQL table definitions belong in `db/schema.ts`.
+
+Add tables to the schema, then apply the schema to Neon with:
+
+```bash
+npm run db:push
+```
+
+Drizzle Kit reads `.env.local` and prefers `DATABASE_URL_UNPOOLED` for schema pushes. The application uses `DATABASE_URL` for pooled queries. `npm run db:studio` opens Drizzle Studio.
