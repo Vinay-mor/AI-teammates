@@ -1,14 +1,25 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { UserButton, useUser } from "@clerk/nextjs"
 import { formatDistanceToNowStrict } from "date-fns"
-import { PlusIcon, UsersRoundIcon } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { PlusIcon, SearchIcon, UsersRoundIcon } from "lucide-react"
 import Link from "next/link"
 
 import { BotDialog } from "@/components/bot-dialog"
 import { ChatAvatar } from "@/components/chat-avatar"
 import { Button } from "@/components/ui/button"
+import {
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandShortcut,
+} from "@/components/ui/command"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,14 +68,28 @@ function formatChatTime(timestamp: string) {
 
 export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
   const [botDialogOpen, setBotDialogOpen] = useState(false)
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false)
   const { user } = useUser()
+  const router = useRouter()
   const userButtonRef = useRef<HTMLDivElement>(null)
   const userName =
     user?.fullName ?? [user?.firstName, user?.lastName].filter(Boolean).join(" ")
 
+  useEffect(() => {
+    function handleSearchShortcut(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault()
+        setSearchDialogOpen(true)
+      }
+    }
+
+    window.addEventListener("keydown", handleSearchShortcut)
+    return () => window.removeEventListener("keydown", handleSearchShortcut)
+  }, [])
+
   return (
     <Sidebar>
-      <SidebarHeader className="flex-row justify-end">
+      <SidebarHeader className="flex-col items-end">
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -97,6 +122,17 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setSearchDialogOpen(true)}
+          aria-label="Search chats"
+          className="h-8 w-full min-w-0 justify-start rounded-lg border border-input bg-transparent px-2.5 py-1 text-base font-normal transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
+        >
+          <SearchIcon data-icon="inline-start" className="opacity-50" />
+          <span className="text-muted-foreground">Search</span>
+          <CommandShortcut>⌘K</CommandShortcut>
+        </Button>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -106,7 +142,7 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
               {chats.map((chat) => (
                 <SidebarMenuItem key={chat.id}>
                   <SidebarMenuButton
-                    render={<Link href={`/chat/${chat.id}`} />}
+                    render={<Link href={`/chats/${chat.id}`} />}
                     className="h-auto min-h-12 py-2"
                     tooltip={chat.name}
                   >
@@ -134,6 +170,40 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
         onOpenChange={setBotDialogOpen}
         hideTrigger
       />
+      <CommandDialog
+        open={searchDialogOpen}
+        onOpenChange={setSearchDialogOpen}
+        title="Search chats"
+        description="Search your chats by name"
+      >
+        <Command>
+          <CommandInput placeholder="Search chats..." />
+          <CommandList>
+            <CommandEmpty>No chats found.</CommandEmpty>
+            <CommandGroup heading="Chats">
+              {chats.map((chat) => (
+                <CommandItem
+                  key={chat.id}
+                  value={chat.name}
+                  onSelect={() => {
+                    setSearchDialogOpen(false)
+                    router.push(`/chats/${chat.id}`)
+                  }}
+                  className="min-h-12 gap-3 py-2"
+                >
+                  <ChatAvatar seed={chat.avatar || chat.id} />
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="truncate font-medium">{chat.name}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {chat.preview || "No messages yet"}
+                    </span>
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </CommandDialog>
       <SidebarFooter className="mt-auto">
         <SidebarMenu>
           <SidebarMenuItem>

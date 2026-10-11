@@ -11,6 +11,9 @@ if (!databaseUrl) {
   throw new Error("DATABASE_URL is required to connect to Neon.");
 }
 
-export const pool = new Pool({ connectionString: databaseUrl });
+const connectionUrl = new URL(databaseUrl);
+connectionUrl.searchParams.set("sslmode", "verify-full");
+
+export const pool = new Pool({ connectionString: connectionUrl.toString() });
 
 export const db = drizzle({ client: pool, schema });
