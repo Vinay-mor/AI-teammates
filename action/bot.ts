@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache"
 import { ZodError } from "zod"
 
 import { db } from "@/db"
-import { bots } from "@/db/schema"
+import { bots, chatMembers, chats } from "@/db/schema"
 import { insertBotSchema } from "@/db/validators"
 
 type CreateBotResult =
@@ -35,10 +35,24 @@ export async function createBot(input: unknown): Promise<CreateBotResult> {
   }
 
   try {
-    const [bot] = await db
-      .insert(bots)
-      .values({ ...botInput, userId })
-      .returning({ id: bots.id })
+    const bot = await db.transaction(async (tx) => {
+      const [createdBot] = await tx
+        .insert(bots)
+        .values({ ...botInput, userId })
+        .returning({ id: bots.id })
+
+      const [chat] = await tx
+        .insert(chats)
+        .values({ userId, kind: "direct" })
+        .returning({ id: chats.id })
+
+      await tx.insert(chatMembers).values({
+        chatId: chat.id,
+        botId: createdBot.id,
+      })
+
+      return createdBot
+    })
 
     revalidatePath("/")
 
