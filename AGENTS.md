@@ -18,6 +18,15 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - This is a development project with no backwards compatibility requirement; existing data is disposable.
 - Never backfill, migrate, or preserve existing rows, and do not spend effort keeping old data working. Treat every schema change as a clean slate and prefer data loss.
 
+## Forms
+
+- Generate insert validators from Drizzle tables with `drizzle-zod` in `db/validators.ts`. Reuse the generated schema in both the client form and its server action, and add field constraints there. Omit server-owned fields such as `id`, `userId`, and timestamps from client input schemas.
+- Build interactive forms with `react-hook-form` and `zodResolver`. Compose controls with the existing shadcn `FieldGroup`, `Field`, `FieldLabel`, `Input`, and `Textarea` components. Put `data-invalid` on invalid fields, `aria-invalid` on their controls, and show errors with `FieldError`.
+- Treat server-action input as untrusted: validate it again with the insert schema, derive `userId` from Clerk `auth()` on the server, and never accept ownership fields from the client. Return a result the form can use to display validation or save errors.
+- When a preset or choice affects related fields, update those fields together (for example, choosing a suggested job also fills its matching instructions). Keep dependent fields editable after autofill.
+- Provide useful initial values where appropriate, such as a generated but editable name. For dialogs, initialize/reset those values when opening and clear stale errors when closing.
+- Disable submission while saving and show pending feedback. On success, explicitly add a toast through the shared `toast` manager from `components/ui/toast` before closing the dialog or navigating; navigation alone does not display a toast. Show server failures in the form and keep it open so the user can correct or retry.
+
 ## DiceBear
 
 Use DiceBear 10. Documentation: https://www.dicebear.com/llms.txt

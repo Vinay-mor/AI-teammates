@@ -1,8 +1,7 @@
-import Link from "next/link"
-import { PlusIcon } from "lucide-react"
 import { auth } from "@clerk/nextjs/server"
 import { randomUUID } from "node:crypto"
 
+import { BotDialog } from "@/components/bot-dialog"
 import {
   Empty,
   EmptyContent,
@@ -10,7 +9,6 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty"
-import { buttonVariants } from "@/components/ui/button"
 import { ChatAvatar } from "@/components/chat-avatar"
 
 export default async function Page() {
@@ -34,17 +32,7 @@ export default async function Page() {
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent className="w-auto max-w-none">
-          <Link
-            className={buttonVariants({
-              variant: "secondary",
-              size: "lg",
-              className: "h-11 rounded-xl px-4 text-base",
-            })}
-            href="/dashboard"
-          >
-            <PlusIcon data-icon="inline-start" />
-            Create a new bot
-          </Link>
+          <BotDialog />
         </EmptyContent>
       </Empty>
     </main>
