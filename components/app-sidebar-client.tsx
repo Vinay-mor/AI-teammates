@@ -9,7 +9,6 @@ import Link from "next/link"
 
 import { BotDialog } from "@/components/bot-dialog"
 import { ChatAvatar } from "@/components/chat-avatar"
-import { Button } from "@/components/ui/button"
 import {
   Command,
   CommandDialog,
@@ -38,6 +37,7 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
 } from "@/components/ui/sidebar"
 
 type ChatItem = {
@@ -88,21 +88,23 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
   }, [])
 
   return (
-    <Sidebar>
-      <SidebarHeader className="flex-col items-end">
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
         <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Create"
-                className="size-12 rounded-xl text-foreground"
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <DropdownMenuTrigger
+                render={
+                  <SidebarMenuButton tooltip="Create">
+                    <PlusIcon />
+                    <span className="group-data-[collapsible=icon]:hidden">
+                      Create
+                    </span>
+                  </SidebarMenuButton>
+                }
               />
-            }
-          >
-            <PlusIcon className="size-6" />
-          </DropdownMenuTrigger>
+            </SidebarMenuItem>
+          </SidebarMenu>
           <DropdownMenuContent
             align="end"
             side="bottom"
@@ -122,17 +124,20 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setSearchDialogOpen(true)}
-          aria-label="Search chats"
-          className="h-8 w-full min-w-0 justify-start rounded-lg border border-input bg-transparent px-2.5 py-1 text-base font-normal transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
-        >
-          <SearchIcon data-icon="inline-start" className="opacity-50" />
-          <span className="text-muted-foreground">Search</span>
-          <CommandShortcut>⌘K</CommandShortcut>
-        </Button>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => setSearchDialogOpen(true)}
+              tooltip="Search chats"
+            >
+              <SearchIcon />
+              <span className="group-data-[collapsible=icon]:hidden">Search</span>
+              <CommandShortcut className="group-data-[collapsible=icon]:hidden">
+                Ctrl K
+              </CommandShortcut>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -143,11 +148,14 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
                 <SidebarMenuItem key={chat.id}>
                   <SidebarMenuButton
                     render={<Link href={`/chats/${chat.id}`} />}
-                    className="h-auto min-h-12 py-2"
+                    className="h-auto min-h-12 py-2 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:min-h-8! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!"
                     tooltip={chat.name}
                   >
-                    <ChatAvatar seed={chat.avatar || chat.id} />
-                    <span className="flex min-w-0 flex-1 flex-col gap-0.5 pr-16">
+                    <ChatAvatar
+                      seed={chat.avatar || chat.id}
+                      className="group-data-[collapsible=icon]:size-6"
+                    />
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5 pr-16 group-data-[collapsible=icon]:hidden">
                       <span className="truncate text-sm font-medium">
                         {chat.name}
                       </span>
@@ -155,7 +163,7 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
                         {chat.preview || "No messages yet"}
                       </span>
                     </span>
-                    <SidebarMenuBadge className="text-[10px] text-muted-foreground">
+                    <SidebarMenuBadge className="text-[10px] text-muted-foreground group-data-[collapsible=icon]:hidden">
                       {formatChatTime(chat.lastMessageAt)}
                     </SidebarMenuBadge>
                   </SidebarMenuButton>
@@ -208,8 +216,8 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              size="lg"
-              className="relative cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-within:bg-sidebar-accent"
+              tooltip={userName || "Account"}
+              className="relative cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-within:bg-sidebar-accent group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:min-h-8! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!"
               render={<div />}
               onClick={(event) => {
                 const trigger = userButtonRef.current?.querySelector("button")
@@ -225,9 +233,11 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
                   appearance={{
                     elements: {
                       userButtonTrigger:
-                        "absolute inset-0 z-0 flex h-full w-full cursor-pointer items-center justify-start rounded-md bg-transparent px-2 outline-hidden transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-                      userButtonAvatarBox: "size-6 shrink-0",
-                      userButtonAvatarImage: "size-6",
+                        "absolute inset-0 z-0 flex h-full w-full cursor-pointer items-center justify-start rounded-md bg-transparent px-2 outline-hidden transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0",
+                      userButtonAvatarBox:
+                        "size-6 shrink-0 group-data-[collapsible=icon]:size-6",
+                      userButtonAvatarImage:
+                        "size-6 group-data-[collapsible=icon]:size-6",
                     },
                   }}
                 />
@@ -241,6 +251,7 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   )
 }
