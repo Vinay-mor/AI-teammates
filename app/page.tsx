@@ -1,69 +1,52 @@
-import { Show, UserButton } from "@clerk/nextjs"
 import Link from "next/link"
+import { PlusIcon } from "lucide-react"
+import { auth } from "@clerk/nextjs/server"
+import { randomUUID } from "node:crypto"
 
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { buttonVariants } from "@/components/ui/button"
+import { ChatAvatar } from "@/components/chat-avatar"
 
-export default function Page() {
+export default async function Page() {
+  await auth.protect()
+
   return (
-    <main className="flex min-h-svh flex-col">
-      <header className="flex h-16 items-center justify-between border-b px-6">
-        <Link className="font-semibold tracking-tight" href="/">
-          AI Teammates
-        </Link>
-
-        <nav aria-label="Account" className="flex items-center gap-2">
-          <Show when="signed-out">
-            <Link
-              className={buttonVariants({ variant: "ghost" })}
-              href="/sign-in"
-            >
-              Sign in
-            </Link>
-            <Link className={buttonVariants()} href="/sign-up">
-              Get started
-            </Link>
-          </Show>
-          <Show when="signed-in">
-            <Link
-              className={buttonVariants({ variant: "outline" })}
-              href="/dashboard"
-            >
-              Open workspace
-            </Link>
-            <UserButton />
-          </Show>
-        </nav>
-      </header>
-
-      <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-6 px-6 py-20 text-center">
-        <p className="text-sm font-medium text-muted-foreground">
-          Your team, ready to work
-        </p>
-        <h1 className="text-4xl font-semibold tracking-tight sm:text-6xl">
-          Meet your AI teammates.
-        </h1>
-        <p className="max-w-xl text-muted-foreground sm:text-lg">
-          Sign in to open your workspace, or create an account to get started.
-        </p>
-        <Show when="signed-out">
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link className={buttonVariants({ size: "lg" })} href="/sign-up">
-              Create your account
-            </Link>
-            <Link
-              className={buttonVariants({ size: "lg", variant: "outline" })}
-              href="/sign-in"
-            >
-              Sign in
-            </Link>
-          </div>
-        </Show>
-        <Show when="signed-in">
-          <Link className={buttonVariants({ size: "lg" })} href="/dashboard">
-            Open your workspace
+    <main className="dark min-h-svh bg-neutral-950 text-neutral-50">
+      <Empty className="min-h-svh gap-6 rounded-none border-0 px-6 py-16">
+        <EmptyHeader className="gap-3">
+          <ChatAvatar seed={randomUUID()} className="mb-3 size-11" />
+          <EmptyTitle
+            role="heading"
+            aria-level={1}
+            className="text-lg font-medium tracking-normal text-foreground"
+          >
+            Meet your first bot
+          </EmptyTitle>
+          <EmptyDescription className="max-w-lg text-lg/8 text-neutral-400">
+            Every bot gets its own personality, memory, and face. Spin one up
+            and start the conversation.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent className="w-auto max-w-none">
+          <Link
+            className={buttonVariants({
+              variant: "secondary",
+              size: "lg",
+              className: "h-11 rounded-xl px-4 text-base",
+            })}
+            href="/dashboard"
+          >
+            <PlusIcon data-icon="inline-start" />
+            Create a new bot
           </Link>
-        </Show>
-      </section>
+        </EmptyContent>
+      </Empty>
     </main>
   )
 }
