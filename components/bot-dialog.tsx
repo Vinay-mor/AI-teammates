@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { nanoid } from "nanoid"
 import { Controller, useForm } from "react-hook-form"
@@ -65,9 +65,19 @@ const botFormSchema = insertBotSchema.extend({
 
 type BotFormValues = z.infer<typeof botFormSchema>
 
-function BotDialog() {
-  const [open, setOpen] = useState(false)
+function BotDialog({
+  open: openProp,
+  onOpenChange,
+  hideTrigger = false,
+}: {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  hideTrigger?: boolean
+} = {}) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = openProp ?? internalOpen
   const [avatar, setAvatar] = useState(() => nanoid())
+  const wasOpenRef = useRef(false)
   const router = useRouter()
   const form = useForm<BotFormValues>({
     resolver: zodResolver(botFormSchema),
@@ -79,8 +89,21 @@ function BotDialog() {
     },
   })
 
+  useEffect(() => {
+    if (openProp && !wasOpenRef.current) {
+      form.reset({
+        avatar,
+        name: getRandomBotName(),
+        job: "",
+        instructions: "",
+      })
+    }
+    wasOpenRef.current = Boolean(openProp)
+  }, [openProp, avatar, form])
+
   function handleOpenChange(nextOpen: boolean) {
-    setOpen(nextOpen)
+    if (openProp === undefined) setInternalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
     if (nextOpen && !open) {
       form.reset({
         avatar,
@@ -107,7 +130,7 @@ function BotDialog() {
       description: `${values.name} is ready to work.`,
       type: "success",
     })
-    setOpen(false)
+    handleOpenChange(false)
     router.push("/dashboard")
     router.refresh()
   }
@@ -120,17 +143,19 @@ function BotDialog() {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger
-        render={
-          <Button
-            variant="secondary"
-            size="lg"
-            className="h-11 rounded-xl px-4 text-base"
-          />
-        }
-      >
-        Create a new bot
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger
+          render={
+            <Button
+              variant="secondary"
+              size="lg"
+              className="h-11 rounded-xl px-4 text-base"
+            />
+          }
+        >
+          Create a new bot
+        </DialogTrigger>
+      )}
       <DialogContent className="dark max-h-[calc(100svh-2rem)] max-w-[52rem] gap-0 overflow-y-auto rounded-[1.25rem] border border-border bg-popover p-0 text-base shadow-2xl sm:max-w-[52rem]">
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className="flex flex-col gap-6 px-6 pt-6 pb-5 sm:px-7 sm:pt-7">
