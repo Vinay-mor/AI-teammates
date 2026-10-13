@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { UserButton, useUser } from "@clerk/nextjs"
 import { formatDistanceToNowStrict } from "date-fns"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { PlusIcon, SearchIcon, UsersRoundIcon } from "lucide-react"
 import Link from "next/link"
 
@@ -48,6 +48,18 @@ type ChatItem = {
   avatar: string
 }
 
+function getSearchShortcut() {
+  return navigator.platform.toLowerCase().includes("mac") ? "⌘K" : "Ctrl K"
+}
+
+function getServerSearchShortcut() {
+  return "Ctrl K"
+}
+
+function subscribeToPlatform() {
+  return () => {}
+}
+
 function formatChatTime(timestamp: string) {
   const distance = formatDistanceToNowStrict(new Date(timestamp))
   const match = distance.match(/(\d+)\s+(second|minute|hour|day|month|year)s?/)
@@ -69,7 +81,13 @@ function formatChatTime(timestamp: string) {
 export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
   const [botDialogOpen, setBotDialogOpen] = useState(false)
   const [searchDialogOpen, setSearchDialogOpen] = useState(false)
+  const searchShortcut = useSyncExternalStore(
+    subscribeToPlatform,
+    getSearchShortcut,
+    getServerSearchShortcut
+  )
   const { user } = useUser()
+  const pathname = usePathname()
   const router = useRouter()
   const userButtonRef = useRef<HTMLDivElement>(null)
   const userName =
@@ -133,7 +151,7 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
               <SearchIcon />
               <span className="group-data-[collapsible=icon]:hidden">Search</span>
               <CommandShortcut className="group-data-[collapsible=icon]:hidden">
-                Ctrl K
+                {searchShortcut}
               </CommandShortcut>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -148,6 +166,10 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
                 <SidebarMenuItem key={chat.id}>
                   <SidebarMenuButton
                     render={<Link href={`/chats/${chat.id}`} />}
+                    isActive={pathname === `/chats/${chat.id}`}
+                    aria-current={
+                      pathname === `/chats/${chat.id}` ? "page" : undefined
+                    }
                     className="h-auto min-h-12 py-2 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:min-h-8! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!"
                     tooltip={chat.name}
                   >
