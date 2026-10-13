@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 
 import { ChatHeader } from "@/components/chat-header"
 import { getChat } from "@/queries/chats"
+import { ChatInterface } from "./chat-interface"
 
 export default async function ChatPage({
   params,
@@ -19,7 +20,11 @@ export default async function ChatPage({
   return (
     <main className="min-h-svh w-full bg-background">
       <ChatHeader name={chat.name} avatar={chat.avatar} bot={chat.bot} />
-      <p>{chatId}</p>
+      <ChatInterface
+        key={chatId}
+        chatId={chatId}
+        instructions={chat.bot?.instructions ?? null}
+      />
     </main>
   )
 }
