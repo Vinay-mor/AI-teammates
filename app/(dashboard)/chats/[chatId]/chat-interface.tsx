@@ -2,6 +2,17 @@
 
 import { useChat } from "@ai-sdk/react"
 import {
+  useLoadTranscript,
+  useTriggerChatTransport,
+} from "@trigger.dev/sdk/chat/react"
+import type { UIMessage } from "ai"
+import type { chatAgent } from "@/trigger/chat"
+import {
+  loadChatTranscript,
+  mintChatAccessToken,
+  startChatSession,
+} from "@/app/actions/chat"
+import {
   Conversation,
   ConversationContent,
   ConversationEmptyState,
@@ -14,7 +25,6 @@ import {
 } from "@/components/ai-elements/message"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { DefaultChatTransport } from "ai"
 import { ArrowUp, Bot, LoaderCircle } from "lucide-react"
 import { useState, type FormEvent } from "react"
 
@@ -24,12 +34,49 @@ type ChatInterfaceProps = {
 }
 
 export function ChatInterface({ chatId, instructions }: ChatInterfaceProps) {
+  const transport = useTriggerChatTransport<typeof chatAgent>({
+    task: "chat",
+    accessToken: ({ chatId }) => mintChatAccessToken(chatId),
+    startSession: ({ chatId }) => startChatSession({ chatId }),
+    clientData: { instructions },
+  })
+  const { messages, isLoading } = useLoadTranscript(
+    chatId,
+    loadChatTranscript,
+    { transport },
+  )
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[calc(100svh-2.5rem)] items-center justify-center text-sm text-muted-foreground">
+        <LoaderCircle className="mr-2 size-4 animate-spin" />
+        Loading conversation...
+      </div>
+    )
+  }
+
+  return (
+    <ChatConversation
+      chatId={chatId}
+      initialMessages={messages}
+      transport={transport}
+    />
+  )
+}
+
+function ChatConversation({
+  chatId,
+  initialMessages,
+  transport,
+}: {
+  chatId: string
+  initialMessages: UIMessage[]
+  transport: ReturnType<typeof useTriggerChatTransport<typeof chatAgent>>
+}) {
   const { messages, sendMessage, status, error } = useChat({
     id: chatId,
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      body: { instructions },
-    }),
+    messages: initialMessages,
+    transport,
   })
   const [input, setInput] = useState("")
   const isBusy = status === "submitted" || status === "streaming"
