@@ -5,6 +5,7 @@ import { MonitorIcon } from "lucide-react"
 
 import { BotDialog } from "@/components/bot-dialog"
 import { ChatAvatar } from "@/components/chat-avatar"
+import { useChatLayout } from "@/components/chat-layout"
 import { Button } from "@/components/ui/button"
 
 type EditableBot = {
@@ -23,6 +24,7 @@ type ChatHeaderProps = {
 
 export function ChatHeader({ name, avatar, bot }: ChatHeaderProps) {
   const [editOpen, setEditOpen] = useState(false)
+  const { isDesktopPanelOpen, toggleDesktopPanel } = useChatLayout()
 
   return (
     <header className="flex h-10 w-full shrink-0 items-center justify-between border-b border-white/10 bg-black px-4 text-white">
@@ -47,7 +49,9 @@ export function ChatHeader({ name, avatar, bot }: ChatHeaderProps) {
         type="button"
         variant="ghost"
         size="icon-sm"
-        aria-label="Desktop view"
+        aria-label="Toggle desktop panel"
+        aria-expanded={isDesktopPanelOpen}
+        onClick={toggleDesktopPanel}
         className="text-neutral-300 hover:bg-neutral-800 hover:text-white"
       >
         <MonitorIcon aria-hidden="true" className="size-4" />

@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server"
 import { notFound } from "next/navigation"
 
 import { ChatHeader } from "@/components/chat-header"
+import { ChatLayout } from "@/components/chat-layout"
 import { getChat } from "@/queries/chats"
 import { ChatInterface } from "./chat-interface"
 
@@ -18,13 +19,18 @@ export default async function ChatPage({
   if (!chat) notFound()
 
   return (
-    <main className="min-h-svh w-full bg-background">
+    <ChatLayout
+      key={chatId}
+      chatId={chatId}
+      sandboxId={chat.bot?.sandboxId ?? null}
+      sandboxName={chat.name}
+    >
       <ChatHeader name={chat.name} avatar={chat.avatar} bot={chat.bot} />
       <ChatInterface
         key={chatId}
         chatId={chatId}
         bot={chat.bot}
       />
-    </main>
+    </ChatLayout>
   )
 }

@@ -41,7 +41,7 @@ export function ChatInterface({ chatId, bot }: ChatInterfaceProps) {
 
   if (isLoading) {
     return (
-      <div className="flex h-[calc(100svh-2.5rem)] items-center justify-center text-sm text-muted-foreground">
+      <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-muted-foreground">
         <LoaderCircle className="mr-2 size-4 animate-spin" />
         Loading conversation...
       </div>

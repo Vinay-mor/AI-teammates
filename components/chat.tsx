@@ -64,7 +64,7 @@ export function Chat({
   }
 
   return (
-    <section className="mx-auto flex h-[calc(100svh-2.5rem)] w-full max-w-4xl flex-col px-4">
+    <section className="mx-auto flex min-h-0 min-w-0 w-full max-w-4xl flex-1 flex-col overflow-hidden px-4">
       <Conversation className="min-h-0 flex-1">
         <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-0 py-8">
           {messages.length === 0 ? (
