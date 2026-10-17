@@ -20,6 +20,7 @@ export async function getChat(chatId: string) {
       botAvatar: bots.avatar,
       botJob: bots.job,
       botInstructions: bots.instructions,
+      botSandboxId: bots.sandboxId,
     })
     .from(chats)
     .leftJoin(chatMembers, eq(chatMembers.chatId, chats.id))
@@ -44,6 +45,7 @@ export async function getChat(chatId: string) {
           avatar: chat.botAvatar ?? chat.botId,
           job: chat.botJob ?? "",
           instructions: chat.botInstructions,
+          sandboxId: chat.botSandboxId,
         }
       : null,
   }

@@ -23,7 +23,7 @@ export default async function ChatPage({
       <ChatInterface
         key={chatId}
         chatId={chatId}
-        instructions={chat.bot?.instructions ?? null}
+        bot={chat.bot}
       />
     </main>
   )

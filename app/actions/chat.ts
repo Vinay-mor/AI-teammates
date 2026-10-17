@@ -19,7 +19,12 @@ export async function startChatSession({ chatId }: { chatId: string }) {
 
   return startTriggerChatSession({
     chatId,
-    clientData: { instructions: existingChat.bot?.instructions ?? null },
+    clientData: {
+      botName: existingChat.bot?.name ?? null,
+      botJob: existingChat.bot?.job ?? null,
+      botInstructions: existingChat.bot?.instructions ?? null,
+      sandboxId: existingChat.bot?.sandboxId ?? null,
+    },
   })
 }
 
