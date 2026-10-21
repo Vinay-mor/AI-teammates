@@ -7,9 +7,8 @@ import { getDaytonaClient } from "@/lib/daytona-client"
 import { getChat } from "@/queries/chats"
 import type { chatAgent } from "@/trigger/chat"
 
-const startTriggerChatSession = chat.createStartSessionAction<typeof chatAgent>(
-  "chat",
-)
+const startTriggerChatSession =
+  chat.createStartSessionAction<typeof chatAgent>("chat")
 const loadTriggerChatTranscript =
   chat.createLoadTranscriptAction(defaultStorage)
 
@@ -56,6 +55,14 @@ export async function startChatSession({ chatId }: { chatId: string }) {
       botJob: existingChat.bot?.job ?? null,
       botInstructions: existingChat.bot?.instructions ?? null,
       sandboxId: existingChat.bot?.sandboxId ?? null,
+      chatKind: existingChat.kind,
+      botId: existingChat.bot?.id ?? null,
+      members: existingChat.members.map(({ id, name, job, instructions }) => ({
+        id,
+        name,
+        job,
+        instructions,
+      })),
     },
   })
 }

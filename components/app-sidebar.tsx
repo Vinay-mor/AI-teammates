@@ -1,8 +1,8 @@
 import { AppSidebarClient } from "@/components/app-sidebar-client"
-import { getUserChats } from "@/queries/bots"
+import { getUserBots, getUserChats } from "@/queries/bots"
 
 export async function AppSidebar() {
-  const chats = await getUserChats()
+  const [chats, bots] = await Promise.all([getUserChats(), getUserBots()])
 
-  return <AppSidebarClient chats={chats} />
+  return <AppSidebarClient chats={chats} bots={bots} />
 }

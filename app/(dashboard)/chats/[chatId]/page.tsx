@@ -25,11 +25,19 @@ export default async function ChatPage({
       sandboxId={chat.bot?.sandboxId ?? null}
       sandboxName={chat.name}
     >
-      <ChatHeader name={chat.name} avatar={chat.avatar} bot={chat.bot} />
+      <ChatHeader
+        name={chat.name}
+        avatar={chat.avatar}
+        bot={chat.bot}
+        kind={chat.kind}
+        members={chat.members}
+      />
       <ChatInterface
         key={chatId}
         chatId={chatId}
         bot={chat.bot}
+        kind={chat.kind}
+        members={chat.members}
       />
     </ChatLayout>
   )

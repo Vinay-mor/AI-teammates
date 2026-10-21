@@ -1,6 +1,9 @@
 "use client"
 
-import { useLoadTranscript, useTriggerChatTransport } from "@trigger.dev/sdk/chat/react"
+import {
+  useLoadTranscript,
+  useTriggerChatTransport,
+} from "@trigger.dev/sdk/chat/react"
 import { LoaderCircle } from "lucide-react"
 
 import {
@@ -13,30 +16,52 @@ import type { chatAgent } from "@/trigger/chat"
 
 type ChatInterfaceProps = {
   chatId: string
+  kind: "direct" | "group"
   bot: {
+    id: string
     name: string
     job: string
     instructions: string | null
     sandboxId: string | null
   } | null
+  members: {
+    id: string
+    name: string
+    avatar: string
+    job: string
+    instructions: string | null
+  }[]
 }
 
-export function ChatInterface({ chatId, bot }: ChatInterfaceProps) {
+export function ChatInterface({
+  chatId,
+  kind,
+  bot,
+  members,
+}: ChatInterfaceProps) {
   const transport = useTriggerChatTransport<typeof chatAgent>({
     task: "chat",
     accessToken: ({ chatId }) => mintChatAccessToken(chatId),
     startSession: ({ chatId }) => startChatSession({ chatId }),
     clientData: {
+      chatKind: kind,
+      botId: bot?.id ?? null,
       botName: bot?.name ?? null,
       botJob: bot?.job ?? null,
       botInstructions: bot?.instructions ?? null,
       sandboxId: bot?.sandboxId ?? null,
+      members: members.map(({ id, name, job, instructions }) => ({
+        id,
+        name,
+        job,
+        instructions,
+      })),
     },
   })
   const { messages, isLoading } = useLoadTranscript(
     chatId,
     loadChatTranscript,
-    { transport },
+    { transport }
   )
 
   if (isLoading) {
@@ -48,5 +73,13 @@ export function ChatInterface({ chatId, bot }: ChatInterfaceProps) {
     )
   }
 
-  return <Chat chatId={chatId} initialMessages={messages} transport={transport} />
+  return (
+    <Chat
+      chatId={chatId}
+      kind={kind}
+      members={members}
+      initialMessages={messages}
+      transport={transport}
+    />
+  )
 }

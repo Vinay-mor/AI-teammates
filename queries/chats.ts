@@ -11,9 +11,10 @@ export async function getChat(chatId: string) {
 
   if (!userId) return null
 
-  const [chat] = await db
+  const members = await db
     .select({
       id: chats.id,
+      kind: chats.kind,
       name: chats.name,
       botId: bots.id,
       botName: bots.name,
@@ -26,27 +27,39 @@ export async function getChat(chatId: string) {
     .leftJoin(chatMembers, eq(chatMembers.chatId, chats.id))
     .leftJoin(
       bots,
-      and(eq(bots.id, chatMembers.botId), eq(bots.userId, userId)),
+      and(eq(bots.id, chatMembers.botId), eq(bots.userId, userId))
     )
     .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
     .orderBy(asc(chatMembers.joinedAt))
-    .limit(1)
 
+  const chat = members[0]
   if (!chat) return null
+
+  const chatBots = members.flatMap((member) =>
+    member.botId
+      ? [
+          {
+            id: member.botId,
+            name: member.botName ?? "New bot",
+            avatar: member.botAvatar ?? member.botId,
+            job: member.botJob ?? "",
+            instructions: member.botInstructions,
+            sandboxId: member.botSandboxId,
+          },
+        ]
+      : []
+  )
+  const bot = chat.kind === "direct" ? (chatBots[0] ?? null) : null
 
   return {
     id: chat.id,
-    name: chat.botName ?? chat.name ?? "New chat",
-    avatar: chat.botAvatar ?? chat.id,
-    bot: chat.botId
-      ? {
-          id: chat.botId,
-          name: chat.botName ?? "New bot",
-          avatar: chat.botAvatar ?? chat.botId,
-          job: chat.botJob ?? "",
-          instructions: chat.botInstructions,
-          sandboxId: chat.botSandboxId,
-        }
-      : null,
+    kind: chat.kind,
+    name:
+      chat.kind === "group"
+        ? (chat.name ?? "Group chat")
+        : (bot?.name ?? "New chat"),
+    avatar: bot?.avatar ?? chatBots[0]?.avatar ?? chat.id,
+    bot,
+    members: chatBots,
   }
 }

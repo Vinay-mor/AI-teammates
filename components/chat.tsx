@@ -30,19 +30,39 @@ import {
   ToolOutput,
   type ToolPart,
 } from "@/components/ai-elements/tool"
+import {
+  PromptInputSelect,
+  PromptInputSelectContent,
+  PromptInputSelectItem,
+  PromptInputSelectTrigger,
+  PromptInputSelectValue,
+} from "@/components/ai-elements/prompt-input"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { ChatAvatar } from "@/components/chat-avatar"
 import type { chatAgent } from "@/trigger/chat"
 import type { useTriggerChatTransport } from "@trigger.dev/sdk/chat/react"
 
-type ChatTransport = ReturnType<typeof useTriggerChatTransport<typeof chatAgent>>
+type ChatTransport = ReturnType<
+  typeof useTriggerChatTransport<typeof chatAgent>
+>
 
 export function Chat({
   chatId,
+  kind,
+  members,
   initialMessages,
   transport,
 }: {
   chatId: string
+  kind: "direct" | "group"
+  members: {
+    id: string
+    name: string
+    avatar: string
+    job: string
+    instructions: string | null
+  }[]
   initialMessages: UIMessage[]
   transport: ChatTransport
 }) {
@@ -52,27 +72,35 @@ export function Chat({
     transport,
   })
   const [input, setInput] = useState("")
+  const [selectedBotId, setSelectedBotId] = useState(members[0]?.id ?? "")
   const isBusy = status === "submitted" || status === "streaming"
+  const selectedBot = members.find((bot) => bot.id === selectedBotId)
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const text = input.trim()
     if (!text || isBusy) return
 
-    sendMessage({ text })
+    sendMessage({ text }, { metadata: { selectedBotId } })
     setInput("")
   }
 
   return (
-    <section className="mx-auto flex min-h-0 min-w-0 w-full max-w-4xl flex-1 flex-col overflow-hidden px-4">
+    <section className="mx-auto flex min-h-0 w-full max-w-4xl min-w-0 flex-1 flex-col overflow-hidden px-4">
       <Conversation className="min-h-0 flex-1">
         <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-0 py-8">
           {messages.length === 0 ? (
             <ConversationEmptyState
               className="min-h-[50vh]"
               icon={<Bot className="size-8" />}
-              title="Start a conversation"
-              description="Send a message to chat with your AI teammate."
+              title={
+                kind === "group" ? "Start a group chat" : "Start a conversation"
+              }
+              description={
+                kind === "group"
+                  ? "Choose a bot below and send a message."
+                  : "Send a message to chat with your AI teammate."
+              }
             />
           ) : (
             messages.map((message) => (
@@ -115,14 +143,14 @@ export function Chat({
         <ConversationScrollButton />
       </Conversation>
 
-      <div className="mx-auto w-full max-w-3xl pb-6 pt-3">
+      <div className="mx-auto w-full max-w-3xl pt-3 pb-6">
         {error && (
           <p className="mb-2 text-sm text-destructive" role="alert">
             Something went wrong. Please try again.
           </p>
         )}
         <form
-          className="flex items-end gap-2 rounded-2xl border bg-background p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring/30"
+          className="flex flex-col gap-2 rounded-2xl border bg-background p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring/30"
           onSubmit={handleSubmit}
         >
           <Textarea
@@ -136,18 +164,57 @@ export function Chat({
                 event.currentTarget.form?.requestSubmit()
               }
             }}
-            placeholder="Message your AI teammate…"
+            placeholder={
+              kind === "group"
+                ? "Message your group…"
+                : "Message your AI teammate…"
+            }
             value={input}
           />
-          <Button
-            aria-label="Send message"
-            className="mb-1 rounded-xl"
-            disabled={!input.trim() || isBusy}
-            size="icon"
-            type="submit"
-          >
-            <ArrowUp className="size-4" />
-          </Button>
+          <div className="flex items-center justify-between gap-2">
+            <PromptInputSelect
+              value={selectedBotId}
+              onValueChange={(value) => {
+                if (typeof value === "string") setSelectedBotId(value)
+              }}
+            >
+              <PromptInputSelectTrigger
+                aria-label="Choose which bot responds"
+                className="h-9 max-w-56 gap-2 rounded-xl px-2 text-foreground"
+              >
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  Reply as
+                </span>
+                {selectedBot ? (
+                  <span className="flex min-w-0 items-center gap-2">
+                    <ChatAvatar seed={selectedBot.avatar} className="size-5" />
+                    <span className="truncate">{selectedBot.name}</span>
+                  </span>
+                ) : (
+                  <PromptInputSelectValue placeholder="Choose a bot" />
+                )}
+              </PromptInputSelectTrigger>
+              <PromptInputSelectContent align="start">
+                {members.map((bot) => (
+                  <PromptInputSelectItem key={bot.id} value={bot.id}>
+                    <ChatAvatar seed={bot.avatar} className="size-5" />
+                    {bot.name}
+                  </PromptInputSelectItem>
+                ))}
+              </PromptInputSelectContent>
+            </PromptInputSelect>
+            <Button
+              aria-label="Send message"
+              className="rounded-xl"
+              disabled={
+                !input.trim() || isBusy || (kind === "group" && !selectedBotId)
+              }
+              size="icon"
+              type="submit"
+            >
+              <ArrowUp className="size-4" />
+            </Button>
+          </div>
         </form>
         <p className="mt-2 text-center text-xs text-muted-foreground">
           AI responses may be inaccurate. Check important information.

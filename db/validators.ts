@@ -1,7 +1,7 @@
 import { createInsertSchema } from "drizzle-zod"
 import { z } from "zod"
 
-import { bots } from "@/db/schema"
+import { bots, chats } from "@/db/schema"
 
 export const insertBotSchema = createInsertSchema(bots, {
   avatar: z.string().trim().min(1, "Choose a face for your bot."),
@@ -26,3 +26,19 @@ export const insertBotSchema = createInsertSchema(bots, {
 })
 
 export type InsertBot = z.infer<typeof insertBotSchema>
+
+export const insertGroupChatSchema = createInsertSchema(chats, {
+  name: z
+    .string()
+    .trim()
+    .min(1, "Enter a name for your group chat.")
+    .max(80, "Group chat names must be 80 characters or fewer."),
+})
+  .pick({ name: true })
+  .extend({
+    botIds: z
+      .array(z.string().trim().min(1))
+      .min(2, "Choose at least two bots."),
+  })
+
+export type InsertGroupChat = z.infer<typeof insertGroupChatSchema>

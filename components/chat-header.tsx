@@ -5,6 +5,7 @@ import { MonitorIcon } from "lucide-react"
 
 import { BotDialog } from "@/components/bot-dialog"
 import { ChatAvatar } from "@/components/chat-avatar"
+import { GroupChatAvatar } from "@/components/group-chat-avatar"
 import { useChatLayout } from "@/components/chat-layout"
 import { Button } from "@/components/ui/button"
 
@@ -16,13 +17,26 @@ type EditableBot = {
   instructions: string | null
 }
 
+type ChatMember = Pick<
+  EditableBot,
+  "id" | "name" | "avatar" | "job" | "instructions"
+>
+
 type ChatHeaderProps = {
   name: string
   avatar: string
   bot: EditableBot | null
+  kind: "direct" | "group"
+  members: ChatMember[]
 }
 
-export function ChatHeader({ name, avatar, bot }: ChatHeaderProps) {
+export function ChatHeader({
+  name,
+  avatar,
+  bot,
+  kind,
+  members,
+}: ChatHeaderProps) {
   const [editOpen, setEditOpen] = useState(false)
   const { isDesktopPanelOpen, toggleDesktopPanel } = useChatLayout()
 
@@ -36,26 +50,42 @@ export function ChatHeader({ name, avatar, bot }: ChatHeaderProps) {
           onClick={() => setEditOpen(true)}
           className="h-8 min-w-0 justify-start gap-2 px-1 text-white hover:bg-neutral-800 hover:text-white"
         >
-          <ChatAvatar seed={avatar} className="size-4" />
+          {kind === "group" ? (
+            <GroupChatAvatar
+              avatars={members.map((member) => member.avatar)}
+              className="size-4"
+            />
+          ) : (
+            <ChatAvatar seed={avatar} className="size-4" />
+          )}
           <span className="truncate text-xs font-semibold">{name}</span>
         </Button>
       ) : (
         <div className="flex min-w-0 items-center gap-2">
-          <ChatAvatar seed={avatar} className="size-4" />
+          {kind === "group" ? (
+            <GroupChatAvatar
+              avatars={members.map((member) => member.avatar)}
+              className="size-4"
+            />
+          ) : (
+            <ChatAvatar seed={avatar} className="size-4" />
+          )}
           <span className="truncate text-xs font-semibold">{name}</span>
         </div>
       )}
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Toggle desktop panel"
-        aria-expanded={isDesktopPanelOpen}
-        onClick={toggleDesktopPanel}
-        className="text-neutral-300 hover:bg-neutral-800 hover:text-white"
-      >
-        <MonitorIcon aria-hidden="true" className="size-4" />
-      </Button>
+      {kind === "direct" && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Toggle desktop panel"
+          aria-expanded={isDesktopPanelOpen}
+          onClick={toggleDesktopPanel}
+          className="text-neutral-300 hover:bg-neutral-800 hover:text-white"
+        >
+          <MonitorIcon aria-hidden="true" className="size-4" />
+        </Button>
+      )}
       {bot && (
         <BotDialog
           bot={bot}

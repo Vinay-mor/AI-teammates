@@ -9,6 +9,8 @@ import Link from "next/link"
 
 import { BotDialog } from "@/components/bot-dialog"
 import { ChatAvatar } from "@/components/chat-avatar"
+import { GroupChatDialog } from "@/components/group-chat-dialog"
+import { GroupChatAvatar } from "@/components/group-chat-avatar"
 import {
   Command,
   CommandDialog,
@@ -46,7 +48,11 @@ type ChatItem = {
   preview: string | null
   lastMessageAt: string
   avatar: string
+  kind: "direct" | "group"
+  memberAvatars: string[]
 }
+
+type BotOption = { id: string; name: string; avatar: string }
 
 function getSearchShortcut() {
   return navigator.platform.toLowerCase().includes("mac") ? "⌘K" : "Ctrl K"
@@ -78,8 +84,15 @@ function formatChatTime(timestamp: string) {
   return `${match[1]}${abbreviations[match[2]]} ago`
 }
 
-export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
+export function AppSidebarClient({
+  chats,
+  bots,
+}: {
+  chats: ChatItem[]
+  bots: BotOption[]
+}) {
   const [botDialogOpen, setBotDialogOpen] = useState(false)
+  const [groupChatDialogOpen, setGroupChatDialogOpen] = useState(false)
   const [searchDialogOpen, setSearchDialogOpen] = useState(false)
   const searchShortcut = useSyncExternalStore(
     subscribeToPlatform,
@@ -91,7 +104,8 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
   const router = useRouter()
   const userButtonRef = useRef<HTMLDivElement>(null)
   const userName =
-    user?.fullName ?? [user?.firstName, user?.lastName].filter(Boolean).join(" ")
+    user?.fullName ??
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ")
 
   useEffect(() => {
     function handleSearchShortcut(event: KeyboardEvent) {
@@ -136,7 +150,10 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
               <PlusIcon className="size-5 text-neutral-400" />
               Create new bot
             </DropdownMenuItem>
-            <DropdownMenuItem className="h-14 gap-4 rounded-xl px-4 text-lg focus:bg-neutral-800">
+            <DropdownMenuItem
+              onClick={() => setGroupChatDialogOpen(true)}
+              className="h-14 gap-4 rounded-xl px-4 text-lg focus:bg-neutral-800"
+            >
               <UsersRoundIcon className="size-5 text-neutral-400" />
               Create group chat
             </DropdownMenuItem>
@@ -149,7 +166,9 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
               tooltip="Search chats"
             >
               <SearchIcon />
-              <span className="group-data-[collapsible=icon]:hidden">Search</span>
+              <span className="group-data-[collapsible=icon]:hidden">
+                Search
+              </span>
               <CommandShortcut className="group-data-[collapsible=icon]:hidden">
                 {searchShortcut}
               </CommandShortcut>
@@ -173,10 +192,17 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
                     className="h-auto min-h-12 py-2 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:min-h-8! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!"
                     tooltip={chat.name}
                   >
-                    <ChatAvatar
-                      seed={chat.avatar || chat.id}
-                      className="group-data-[collapsible=icon]:size-6"
-                    />
+                    {chat.kind === "group" ? (
+                      <GroupChatAvatar
+                        avatars={chat.memberAvatars}
+                        className="group-data-[collapsible=icon]:size-6"
+                      />
+                    ) : (
+                      <ChatAvatar
+                        seed={chat.avatar || chat.id}
+                        className="group-data-[collapsible=icon]:size-6"
+                      />
+                    )}
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5 pr-16 group-data-[collapsible=icon]:hidden">
                       <span className="truncate text-sm font-medium">
                         {chat.name}
@@ -200,6 +226,11 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
         onOpenChange={setBotDialogOpen}
         hideTrigger
       />
+      <GroupChatDialog
+        bots={bots}
+        open={groupChatDialogOpen}
+        onOpenChange={setGroupChatDialogOpen}
+      />
       <CommandDialog
         open={searchDialogOpen}
         onOpenChange={setSearchDialogOpen}
@@ -221,7 +252,11 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
                   }}
                   className="min-h-12 gap-3 py-2"
                 >
-                  <ChatAvatar seed={chat.avatar || chat.id} />
+                  {chat.kind === "group" ? (
+                    <GroupChatAvatar avatars={chat.memberAvatars} />
+                  ) : (
+                    <ChatAvatar seed={chat.avatar || chat.id} />
+                  )}
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="truncate font-medium">{chat.name}</span>
                     <span className="truncate text-xs text-muted-foreground">
@@ -239,13 +274,17 @@ export function AppSidebarClient({ chats }: { chats: ChatItem[] }) {
           <SidebarMenuItem>
             <SidebarMenuButton
               tooltip={userName || "Account"}
-              className="relative cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-within:bg-sidebar-accent group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:min-h-8! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!"
+              className="relative cursor-pointer group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:min-h-8! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0! focus-within:bg-sidebar-accent hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               render={<div />}
               onClick={(event) => {
                 const trigger = userButtonRef.current?.querySelector("button")
                 const target = event.target
 
-                if (trigger && target instanceof Node && !trigger.contains(target)) {
+                if (
+                  trigger &&
+                  target instanceof Node &&
+                  !trigger.contains(target)
+                ) {
                   trigger.click()
                 }
               }}
