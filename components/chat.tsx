@@ -37,6 +37,7 @@ import {
   PromptInputSelectTrigger,
   PromptInputSelectValue,
 } from "@/components/ai-elements/prompt-input"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ChatAvatar } from "@/components/chat-avatar"
@@ -81,7 +82,10 @@ export function Chat({
     const text = input.trim()
     if (!text || isBusy) return
 
-    sendMessage({ text }, { metadata: { selectedBotId } })
+    sendMessage(
+      { text, metadata: { selectedBotId } },
+      { metadata: { selectedBotId } }
+    )
     setInput("")
   }
 
@@ -114,6 +118,14 @@ export function Chat({
                 botPart?.type === "data-bot"
                   ? members.find((bot) => bot.id === botPart.data.botId)
                   : undefined
+              const addressedBot =
+                kind === "group" &&
+                message.role === "user" &&
+                message.metadata?.selectedBotId
+                  ? members.find(
+                      (bot) => bot.id === message.metadata?.selectedBotId
+                    )
+                  : undefined
 
               return (
                 <Message
@@ -134,6 +146,15 @@ export function Chat({
                   <MessageContent
                     className={responder ? "min-w-0 flex-1" : undefined}
                   >
+                    {addressedBot && (
+                      <Badge className="mb-2 gap-1.5 px-1.5" variant="secondary">
+                        <ChatAvatar
+                          seed={addressedBot.avatar}
+                          className="size-4"
+                        />
+                        <span>{addressedBot.name}</span>
+                      </Badge>
+                    )}
                     {message.parts.map((part, index) => {
                       if (part.type === "text") {
                         return (

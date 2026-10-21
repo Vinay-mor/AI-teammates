@@ -8,7 +8,10 @@ import { rateLimitedGoogleFetch } from "../lib/google-rate-limit"
 
 const google = createGoogleGenerativeAI({ fetch: rateLimitedGoogleFetch })
 
-export type ChatUIMessage = UIMessage<unknown, { bot: { botId: string } }>
+export type ChatUIMessage = UIMessage<
+  { selectedBotId?: string },
+  { bot: { botId: string } }
+>
 
 export const chatAgent = chat.withUIMessage<ChatUIMessage>().agent({
   id: "chat",
