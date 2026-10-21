@@ -40,7 +40,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ChatAvatar } from "@/components/chat-avatar"
-import type { chatAgent } from "@/trigger/chat"
+import type { ChatUIMessage, chatAgent } from "@/trigger/chat"
 import type { useTriggerChatTransport } from "@trigger.dev/sdk/chat/react"
 
 type ChatTransport = ReturnType<
@@ -66,9 +66,9 @@ export function Chat({
   initialMessages: UIMessage[]
   transport: ChatTransport
 }) {
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, sendMessage, status, error } = useChat<ChatUIMessage>({
     id: chatId,
-    messages: initialMessages,
+    messages: initialMessages as ChatUIMessage[],
     transport,
   })
   const [input, setInput] = useState("")
@@ -103,35 +103,69 @@ export function Chat({
               }
             />
           ) : (
-            messages.map((message) => (
-              <Message from={message.role} key={message.id}>
-                <MessageContent>
-                  {message.parts.map((part, index) => {
-                    if (part.type === "text") {
-                      return (
-                        <MessageResponse key={`${message.id}-${index}`}>
-                          {part.text}
-                        </MessageResponse>
-                      )
-                    }
+            messages.map((message) => {
+              const botParts = message.parts.filter(
+                (part) => part.type === "data-bot"
+              )
+              const botPart = botParts[botParts.length - 1]
+              const responder =
+                kind === "group" &&
+                message.role === "assistant" &&
+                botPart?.type === "data-bot"
+                  ? members.find((bot) => bot.id === botPart.data.botId)
+                  : undefined
 
-                    if (part.type.startsWith("tool-")) {
-                      const toolPart = part as ToolPart
-                      if (toolPart.type === "tool-viewScreen") return null
+              return (
+                <Message
+                  className={
+                    responder
+                      ? "max-w-full flex-row items-start gap-2"
+                      : undefined
+                  }
+                  from={message.role}
+                  key={message.id}
+                >
+                  {responder && (
+                    <ChatAvatar
+                      seed={responder.avatar}
+                      className="mt-1 size-7 shrink-0"
+                    />
+                  )}
+                  <MessageContent
+                    className={responder ? "min-w-0 flex-1" : undefined}
+                  >
+                    {message.parts.map((part, index) => {
+                      if (part.type === "text") {
+                        return (
+                          <MessageResponse key={`${message.id}-${index}`}>
+                            {part.text}
+                          </MessageResponse>
+                        )
+                      }
 
-                      return (
-                        <ChatToolCall
-                          key={`${message.id}-${index}`}
-                          part={toolPart}
-                        />
-                      )
-                    }
+                      if (part.type.startsWith("tool-")) {
+                        const toolPart = part as ToolPart
+                        if (
+                          toolPart.type === "tool-viewScreen" ||
+                          toolPart.type === "tool-handoff"
+                        ) {
+                          return null
+                        }
 
-                    return null
-                  })}
-                </MessageContent>
-              </Message>
-            ))
+                        return (
+                          <ChatToolCall
+                            key={`${message.id}-${index}`}
+                            part={toolPart}
+                          />
+                        )
+                      }
+
+                      return null
+                    })}
+                  </MessageContent>
+                </Message>
+              )
+            })
           )}
           {status === "submitted" && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
