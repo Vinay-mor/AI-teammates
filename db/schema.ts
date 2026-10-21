@@ -71,6 +71,13 @@ export const chatMembers = pgTable(
   ],
 );
 
+export const googleApiRateLimits = pgTable("google_api_rate_limits", {
+  provider: text("provider").primaryKey(),
+  nextAvailableAt: timestamp("next_available_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const botsRelations = relations(bots, ({ many }) => ({
   chatMembers: many(chatMembers),
 }));

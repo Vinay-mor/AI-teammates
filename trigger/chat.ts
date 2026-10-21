@@ -1,8 +1,11 @@
-import { google } from "@ai-sdk/google"
+import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { stepCountIs } from "ai"
 import { chat, defaultStorage } from "@trigger.dev/sdk/ai"
 import { z } from "zod"
 import { createChatTools } from "../lib/chat-tools"
+import { rateLimitedGoogleFetch } from "../lib/google-rate-limit"
+
+const google = createGoogleGenerativeAI({ fetch: rateLimitedGoogleFetch })
 
 export const chatAgent = chat.agent({
   id: "chat",
