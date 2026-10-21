@@ -38,7 +38,10 @@ export const insertGroupChatSchema = createInsertSchema(chats, {
   .extend({
     botIds: z
       .array(z.string().trim().min(1))
-      .min(2, "Choose at least two bots."),
+      .min(2, "Choose at least two bots.")
+      .refine((botIds) => new Set(botIds).size === botIds.length, {
+        message: "Each bot can only be added once.",
+      }),
   })
 
 export type InsertGroupChat = z.infer<typeof insertGroupChatSchema>

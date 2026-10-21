@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { MonitorIcon } from "lucide-react"
 
 import { BotDialog } from "@/components/bot-dialog"
 import { ChatAvatar } from "@/components/chat-avatar"
+import { GroupChatDialog } from "@/components/group-chat-dialog"
 import { GroupChatAvatar } from "@/components/group-chat-avatar"
 import { useChatLayout } from "@/components/chat-layout"
 import { Button } from "@/components/ui/button"
@@ -23,31 +24,45 @@ type ChatMember = Pick<
 >
 
 type ChatHeaderProps = {
+  chatId: string
   name: string
   avatar: string
   bot: EditableBot | null
   kind: "direct" | "group"
   members: ChatMember[]
+  bots: { id: string; name: string; avatar: string }[]
 }
 
 export function ChatHeader({
+  chatId,
   name,
   avatar,
   bot,
   kind,
   members,
+  bots,
 }: ChatHeaderProps) {
   const [editOpen, setEditOpen] = useState(false)
+  const [groupEditOpen, setGroupEditOpen] = useState(false)
   const { isDesktopPanelOpen, toggleDesktopPanel } = useChatLayout()
+  const group = useMemo(
+    () =>
+      kind === "group"
+        ? { id: chatId, name, botIds: members.map((member) => member.id) }
+        : undefined,
+    [chatId, kind, members, name],
+  )
 
   return (
     <header className="flex h-10 w-full shrink-0 items-center justify-between border-b border-white/10 bg-black px-4 text-white">
-      {bot ? (
+      {bot || kind === "group" ? (
         <Button
           type="button"
           variant="ghost"
-          aria-label={`Edit ${name}`}
-          onClick={() => setEditOpen(true)}
+          aria-label={`Edit ${kind === "group" ? "group chat" : "bot"} ${name}`}
+          onClick={() =>
+            kind === "group" ? setGroupEditOpen(true) : setEditOpen(true)
+          }
           className="h-8 min-w-0 justify-start gap-2 px-1 text-white hover:bg-neutral-800 hover:text-white"
         >
           {kind === "group" ? (
@@ -92,6 +107,14 @@ export function ChatHeader({
           open={editOpen}
           onOpenChange={setEditOpen}
           hideTrigger
+        />
+      )}
+      {group && (
+        <GroupChatDialog
+          bots={bots}
+          group={group}
+          open={groupEditOpen}
+          onOpenChange={setGroupEditOpen}
         />
       )}
     </header>
