@@ -30,6 +30,7 @@ type ChatInterfaceProps = {
     avatar: string
     job: string
     instructions: string | null
+    sandboxId: string | null
   }[]
 }
 
@@ -50,11 +51,12 @@ export function ChatInterface({
       botJob: bot?.job ?? null,
       botInstructions: bot?.instructions ?? null,
       sandboxId: bot?.sandboxId ?? null,
-      members: members.map(({ id, name, job, instructions }) => ({
+      members: members.map(({ id, name, job, instructions, sandboxId }) => ({
         id,
         name,
         job,
         instructions,
+        sandboxId,
       })),
     },
   })

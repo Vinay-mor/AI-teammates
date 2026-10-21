@@ -57,12 +57,15 @@ export async function startChatSession({ chatId }: { chatId: string }) {
       sandboxId: existingChat.bot?.sandboxId ?? null,
       chatKind: existingChat.kind,
       botId: existingChat.bot?.id ?? null,
-      members: existingChat.members.map(({ id, name, job, instructions }) => ({
-        id,
-        name,
-        job,
-        instructions,
-      })),
+      members: existingChat.members.map(
+        ({ id, name, job, instructions, sandboxId }) => ({
+          id,
+          name,
+          job,
+          instructions,
+          sandboxId,
+        }),
+      ),
     },
   })
 }
