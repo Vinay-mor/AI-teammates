@@ -12,11 +12,6 @@ import { usePanelRef } from "react-resizable-panels"
 
 import { getChatVncPreviewUrl } from "@/app/actions/chat"
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -53,13 +48,11 @@ export function ChatLayout({
   sandboxName,
 }: ChatLayoutProps) {
   const [isDesktopPanelOpen, setIsDesktopPanelOpen] = useState(false)
-  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const requestStarted = useRef(false)
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const panelHostRef = useRef<HTMLDivElement | null>(null)
-  const dialogHostRef = useRef<HTMLDivElement | null>(null)
   const previewPanelRef = usePanelRef()
 
   useEffect(() => {
@@ -79,40 +72,34 @@ export function ChatLayout({
   }, [chatId, isDesktopPanelOpen, sandboxId])
 
   useEffect(() => {
-    if (!previewUrl || iframeRef.current) return
+    if (!previewUrl) return
 
-    const iframe = document.createElement("iframe")
-    iframe.src = previewUrl
-    iframe.title = `${sandboxName} desktop preview`
-    iframe.allow = "clipboard-read; clipboard-write; fullscreen"
-    iframe.setAttribute(
-      "sandbox",
-      "allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-downloads",
-    )
-    iframe.referrerPolicy = "no-referrer"
-    iframe.className = "block h-full w-full border-0 bg-black"
-    iframe.tabIndex = 0
-    iframe.scrolling = "no"
-    iframe.style.overflow = "hidden"
-    iframeRef.current = iframe
-  }, [previewUrl, sandboxName])
+    let iframe = iframeRef.current
 
-  useEffect(() => {
-    const iframe = iframeRef.current
-    if (!iframe) return
+    if (!iframe) {
+      iframe = document.createElement("iframe")
+      iframe.src = previewUrl
+      iframe.title = `${sandboxName} desktop preview`
+      iframe.allow =
+        "clipboard-read; clipboard-write; fullscreen; pointer-lock"
+      iframe.setAttribute(
+        "sandbox",
+        "allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-downloads",
+      )
+      iframe.referrerPolicy = "no-referrer"
+      iframe.className = "block h-full w-full border-0 bg-black"
+      iframe.tabIndex = 0
+      iframe.scrolling = "no"
+      iframe.style.overflow = "hidden"
+      iframeRef.current = iframe
+    }
 
-    const host = isFullscreenOpen ? dialogHostRef.current : panelHostRef.current
-
+    const host = panelHostRef.current
     if (host && iframe.parentElement !== host) host.replaceChildren(iframe)
-  }, [isDesktopPanelOpen, isFullscreenOpen, previewUrl])
+  }, [isDesktopPanelOpen, previewUrl, sandboxName])
 
   function toggleDesktopPanel() {
     setIsDesktopPanelOpen((isOpen) => !isOpen)
-    setIsFullscreenOpen(false)
-  }
-
-  function handleDialogOpenChange(open: boolean, details: { reason: string }) {
-    if (open || details.reason === "close-press") setIsFullscreenOpen(open)
   }
 
   return (
@@ -168,12 +155,17 @@ export function ChatLayout({
                       </div>
                     )}
                     {previewUrl && !previewError && (
-                      <button
-                        type="button"
-                        aria-label={`Open ${sandboxName} desktop in fullscreen`}
-                        onClick={() => setIsFullscreenOpen(true)}
-                        className="absolute inset-0 cursor-zoom-in"
-                      />
+                      <a
+                        href={previewUrl}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        aria-label={`Open ${sandboxName} desktop in a new tab`}
+                        className="group absolute inset-0 cursor-pointer"
+                      >
+                        <span className="absolute right-3 bottom-3 rounded-lg bg-background/90 px-3 py-2 text-sm font-medium text-foreground shadow-sm opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                          Open desktop in new tab
+                        </span>
+                      </a>
                     )}
                   </div>
                   <p className="shrink-0 truncate text-center text-sm text-muted-foreground">
@@ -189,25 +181,6 @@ export function ChatLayout({
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
-      <Dialog
-        open={isFullscreenOpen}
-        onOpenChange={handleDialogOpenChange}
-        disablePointerDismissal
-      >
-        <DialogContent
-          className="h-svh w-svw max-w-none gap-0 overflow-hidden rounded-none border-0 bg-background p-0 sm:max-w-none"
-          showCloseButton
-        >
-          <DialogTitle className="sr-only">
-            {sandboxName} desktop
-          </DialogTitle>
-          <div
-            ref={dialogHostRef}
-            className="h-full w-full"
-            data-vnc-host="dialog"
-          />
-        </DialogContent>
-      </Dialog>
     </ChatLayoutContext.Provider>
   )
 }

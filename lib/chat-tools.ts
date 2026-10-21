@@ -18,7 +18,9 @@ async function getSandbox(sandboxId: string | null | undefined) {
 async function getComputerSandbox(sandboxId: string | null | undefined) {
   const sandbox = await getSandbox(sandboxId)
   const status = await sandbox.computerUse.getStatus()
-  if (status.status !== "running") await sandbox.computerUse.start()
+  if (status.status !== "running" && status.status !== "active") {
+    await sandbox.computerUse.start()
+  }
   return sandbox
 }
 

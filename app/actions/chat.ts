@@ -27,7 +27,10 @@ export async function getChatVncPreviewUrl(chatId: string) {
   if (sandbox.state !== "started") await sandbox.start()
 
   const computerUseStatus = await sandbox.computerUse.getStatus()
-  if (computerUseStatus.status !== "running") {
+  if (
+    computerUseStatus.status !== "running" &&
+    computerUseStatus.status !== "active"
+  ) {
     await sandbox.computerUse.start()
   }
 
