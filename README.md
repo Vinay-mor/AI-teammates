@@ -31,3 +31,15 @@ npm run db:push
 ```
 
 Drizzle Kit reads `.env.local` and prefers `DATABASE_URL_UNPOOLED` for schema pushes. The application uses `DATABASE_URL` for pooled queries. `npm run db:studio` opens Drizzle Studio.
+
+## Sentry
+
+Sentry is initialized for browser, Node.js, and Edge runtimes. Add the new project's
+DSN to `.env.local` as `NEXT_PUBLIC_SENTRY_DSN`; the server runtimes also accept
+`SENTRY_DSN` and fall back to the public DSN. Set `SENTRY_ENVIRONMENT` to override
+the default environment name (`development` or `production`). Tracing samples 100%
+of development traffic and 10% of production traffic.
+
+For production source maps, set `SENTRY_AUTH_TOKEN` in the build environment. Keep
+that token private; it is used by `next build` to upload source maps for the
+`student-tnp/ai-teammates` project.
