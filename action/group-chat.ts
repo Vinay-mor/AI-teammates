@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server"
 import { revalidatePath } from "next/cache"
 import { and, eq, inArray } from "drizzle-orm"
 import { ZodError, z } from "zod"
+import * as Sentry from "@sentry/nextjs"
 
 import { db } from "@/db"
 import { bots, chatMembers, chats } from "@/db/schema"
@@ -69,8 +70,19 @@ export async function createGroupChat(
     })
 
     revalidatePath("/", "layout")
+    Sentry.logger.info("chat.group.created", {
+      "app.chat.id": chatId,
+      "app.chat.member_count": groupInput.botIds.length,
+    })
     return { success: true, id: chatId }
   } catch (error) {
+    if (!(error instanceof Error && error.message.startsWith("Choose bots"))) {
+      console.error("Failed to create group chat.", error)
+      Sentry.logger.error("chat.group.create_failed", {
+        "error.type": error instanceof Error ? error.name : "unknown",
+      })
+      Sentry.captureException(error)
+    }
     return {
       success: false,
       error:
@@ -148,9 +160,21 @@ export async function updateGroupChat(
     })
 
     revalidatePath("/", "layout")
+    Sentry.logger.info("chat.group.updated", {
+      "app.chat.id": chatIdResult.data,
+      "app.chat.member_count": groupInput.botIds.length,
+    })
     return { success: true }
   } catch (error) {
     const message = error instanceof Error ? error.message : ""
+    if (message !== "Group chat not found." && !message.startsWith("Choose bots")) {
+      console.error("Failed to update group chat.", error)
+      Sentry.logger.error("chat.group.update_failed", {
+        "app.chat.id": chatIdResult.data,
+        "error.type": error instanceof Error ? error.name : "unknown",
+      })
+      Sentry.captureException(error)
+    }
     return {
       success: false,
       error:
@@ -195,7 +219,13 @@ export async function deleteGroupChat(
 
     revalidatePath("/", "layout")
     return { success: true }
-  } catch {
+  } catch (error) {
+    console.error("Failed to delete group chat.", error)
+    Sentry.logger.error("chat.group.delete_failed", {
+      "app.chat.id": chatIdResult.data,
+      "error.type": error instanceof Error ? error.name : "unknown",
+    })
+    Sentry.captureException(error)
     return {
       success: false,
       error: "We couldn't delete the group chat. Please try again.",

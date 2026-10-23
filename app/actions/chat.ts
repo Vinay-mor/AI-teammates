@@ -3,6 +3,7 @@
 import { auth as triggerAuth } from "@trigger.dev/sdk"
 import { chat, defaultStorage } from "@trigger.dev/sdk/ai"
 import { auth } from "@clerk/nextjs/server"
+import * as Sentry from "@sentry/nextjs"
 
 import { getMeteredSandbox } from "@/lib/daytona-usage"
 import { getChat } from "@/queries/chats"
@@ -48,6 +49,11 @@ export async function getChatVncPreviewUrl(chatId: string) {
   previewUrl.searchParams.set("reconnect", "1")
   previewUrl.searchParams.set("path", "websockify")
 
+  Sentry.logger.info("chat.sandbox.preview_issued", {
+    "app.chat.id": chatId,
+    "app.sandbox.id": sandboxId,
+  })
+
   return previewUrl.toString()
 }
 
@@ -59,7 +65,7 @@ export async function startChatSession({ chatId }: { chatId: string }) {
 
   if (!existingChat) throw new Error("Chat not found")
 
-  return startTriggerChatSession({
+  const session = await startTriggerChatSession({
     chatId,
     clientData: {
       botName: existingChat.bot?.name ?? null,
@@ -79,6 +85,12 @@ export async function startChatSession({ chatId }: { chatId: string }) {
       ),
     },
   })
+  Sentry.logger.info("chat.session.started", {
+    "app.chat.id": chatId,
+    "app.chat.kind": existingChat.kind,
+    "app.chat.member_count": existingChat.members.length,
+  })
+  return session
 }
 
 export async function mintChatAccessToken(chatId: string) {
@@ -87,13 +99,15 @@ export async function mintChatAccessToken(chatId: string) {
 
   if (!existingChat) throw new Error("Chat not found")
 
-  return triggerAuth.createPublicToken({
+  const token = await triggerAuth.createPublicToken({
     scopes: {
       read: { sessions: chatId },
       write: { sessions: chatId },
     },
     expirationTime: "1h",
   })
+  Sentry.logger.info("chat.access_token.issued", { "app.chat.id": chatId })
+  return token
 }
 
 export async function loadChatTranscript({
@@ -107,5 +121,10 @@ export async function loadChatTranscript({
 
   if (!existingChat) throw new Error("Chat not found")
 
-  return loadTriggerChatTranscript({ chatId, limit })
+  const transcript = await loadTriggerChatTranscript({ chatId, limit })
+  Sentry.logger.info("chat.transcript.loaded", {
+    "app.chat.id": chatId,
+    ...(limit !== undefined ? { "app.chat.requested_limit": limit } : {}),
+  })
+  return transcript
 }

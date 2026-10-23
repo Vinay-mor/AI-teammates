@@ -1,6 +1,7 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { stepCountIs, tool } from "ai"
 import type { UIMessage } from "ai"
+import * as Sentry from "@sentry/node"
 import { chat, defaultStorage } from "@trigger.dev/sdk/ai"
 import { z } from "zod"
 import { readBotMemory } from "../lib/bot-memory"
@@ -143,8 +144,31 @@ export const chatAgent = chat.withUIMessage<ChatUIMessage>().agent({
       })
       throw error
     }
+
+    Sentry.logger.info("ai.chat.turn.started", {
+      "app.chat.id": chatId,
+      "app.chat.turn": turn,
+      "app.chat.message_count": messages.length,
+    })
   },
-  onTurnComplete: async ({ chatId, turn, usage }) => {
+  onTurnComplete: async ({ chatId, turn, usage, error, ctx }) => {
+    if (error) {
+      console.error("AI chat turn failed.", error)
+      Sentry.logger.error("ai.chat.turn.failed", {
+        "app.chat.id": chatId,
+        "app.chat.turn": turn,
+        "error.type": error instanceof Error ? error.name : "unknown",
+      })
+      Sentry.withScope((scope) => {
+        scope.setTag("trigger_task_id", ctx.task.id)
+        scope.setTag("trigger_run_id", ctx.run.id)
+        scope.setTag("chat_turn", String(turn))
+        Sentry.captureException(error)
+      })
+
+      await Sentry.flush(2_000)
+    }
+
     const eventPrefix = `ai:${chatId}:${turn}`
     const ownerId = await getChatOwnerId(chatId)
     await Promise.all([
@@ -165,6 +189,14 @@ export const chatAgent = chat.withUIMessage<ChatUIMessage>().agent({
         reservationEventKey: `${eventPrefix}:output-reserve`,
       }),
     ])
+    if (!error) {
+      Sentry.logger.info("ai.chat.turn.completed", {
+        "app.chat.id": chatId,
+        "app.chat.turn": turn,
+        "app.ai.input_tokens": usage?.inputTokens ?? 0,
+        "app.ai.output_tokens": usage?.outputTokens ?? 0,
+      })
+    }
   },
   run: async ({ chatId, messages, signal, streamText, clientData, tools }) => {
     const isGroupChat = clientData?.chatKind === "group"

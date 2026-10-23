@@ -4,6 +4,15 @@ Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   environment: process.env.SENTRY_ENVIRONMENT ?? process.env.NODE_ENV,
   tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+  integrations: [
+    Sentry.replayIntegration({
+      maskAllText: true,
+      maskAllInputs: true,
+      blockAllMedia: true,
+    }),
+  ],
+  replaysSessionSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+  replaysOnErrorSampleRate: 1.0,
 })
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart

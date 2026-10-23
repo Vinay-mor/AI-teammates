@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,6 +75,9 @@ export const useAudioDevices = () => {
 
       setError(message);
       console.error("Error getting audio devices:", message);
+      Sentry.logger.warn("ui.audio_devices.enumeration_failed", {
+        "error.type": caughtError instanceof Error ? caughtError.name : "unknown",
+      });
     } finally {
       setLoading(false);
     }
@@ -111,6 +115,9 @@ export const useAudioDevices = () => {
 
       setError(message);
       console.error("Error getting audio devices:", message);
+      Sentry.logger.warn("ui.audio_devices.enumeration_failed", {
+        "error.type": caughtError instanceof Error ? caughtError.name : "unknown",
+      });
     } finally {
       setLoading(false);
     }

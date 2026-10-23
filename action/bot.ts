@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { and, count, eq, inArray, sql } from "drizzle-orm"
 import { nanoid } from "nanoid"
 import { ZodError, z } from "zod"
+import * as Sentry from "@sentry/nextjs"
 
 import { db } from "@/db"
 import { bots, chatMembers, chats } from "@/db/schema"
@@ -128,6 +129,10 @@ export async function createBot(input: unknown): Promise<CreateBotResult> {
     }
 
     createdBotId = bot.id
+    Sentry.logger.info("bot.created", {
+      "app.bot.id": createdBotId,
+      "app.bot.sandbox_id": sandbox.id,
+    })
   } catch (error) {
     if (sandboxUsageReserved) try {
       await settleUsageReservation({
@@ -140,21 +145,35 @@ export async function createBot(input: unknown): Promise<CreateBotResult> {
       })
     } catch (usageError) {
       console.error("Failed to settle sandbox creation usage.", usageError)
+      Sentry.logger.error("bot.create.usage_settlement_failed", {
+        "app.bot.id": botId,
+        "error.type": usageError instanceof Error ? usageError.name : "unknown",
+      })
     }
     if (cleanupSandbox) {
       try {
         await cleanupSandbox()
       } catch (cleanupError) {
-        console.error(
-          "Failed to clean up sandbox after bot creation failed.",
-          cleanupError,
-        )
+        console.error("Failed to clean up sandbox after bot creation failed.", cleanupError)
+        Sentry.logger.error("bot.create.sandbox_cleanup_failed", {
+          "app.bot.id": botId,
+          "error.type": cleanupError instanceof Error ? cleanupError.name : "unknown",
+        })
       }
     }
 
     if (error instanceof UsageLimitError) {
+      Sentry.logger.warn("bot.create.rejected_by_usage_limit", {
+        "app.bot.id": botId,
+      })
       return { success: false, error: error.message }
     }
+    console.error("Failed to create bot.", error)
+    Sentry.logger.error("bot.create.failed", {
+      "app.bot.id": botId,
+      "error.type": error instanceof Error ? error.name : "unknown",
+    })
+    Sentry.captureException(error)
     return {
       success: false,
       error: "We couldn't create your bot. Please try again.",
@@ -213,8 +232,15 @@ export async function updateBot(
     }
 
     revalidatePath("/", "layout")
+    Sentry.logger.info("bot.updated", { "app.bot.id": updatedBot.id })
     return { success: true }
-  } catch {
+  } catch (error) {
+    console.error("Failed to update bot.", error)
+    Sentry.logger.error("bot.update.failed", {
+      "app.bot.id": botIdResult.data,
+      "error.type": error instanceof Error ? error.name : "unknown",
+    })
+    Sentry.captureException(error)
     return {
       success: false,
       error: "We couldn't update your bot. Please try again.",
@@ -294,8 +320,15 @@ export async function deleteBot(
     }
 
     revalidatePath("/", "layout")
+    Sentry.logger.info("bot.deleted", { "app.bot.id": botIdResult.data })
     return { success: true }
-  } catch {
+  } catch (error) {
+    console.error("Failed to delete bot.", error)
+    Sentry.logger.error("bot.delete.failed", {
+      "app.bot.id": botIdResult.data,
+      "error.type": error instanceof Error ? error.name : "unknown",
+    })
+    Sentry.captureException(error)
     return {
       success: false,
       error: "We couldn't delete your bot. Please try again.",

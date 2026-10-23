@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -239,6 +240,9 @@ export const highlightCode = (
     // oxlint-disable-next-line eslint-plugin-promise(prefer-await-to-then), eslint-plugin-promise(prefer-await-to-callbacks)
     .catch((error) => {
       console.error("Failed to highlight code:", error);
+      Sentry.logger.warn("ui.code_highlight.failed", {
+        "error.type": error instanceof Error ? error.name : "unknown",
+      });
       subscribers.delete(tokensCacheKey);
     });
 

@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   CircleAlert,
   LoaderCircle,
+  RotateCcw,
 } from "lucide-react"
 import { useEffect, useState, type FormEvent } from "react"
 import { useAuth } from "@clerk/nextjs"
@@ -73,15 +74,19 @@ export function Chat({
 }) {
   const { has, isLoaded } = useAuth()
   const router = useRouter()
-  const { messages, sendMessage, status, error } = useChat<ChatUIMessage>({
-    id: chatId,
-    messages: initialMessages as ChatUIMessage[],
-    transport,
-  })
+  const { messages, sendMessage, regenerate, status, error } =
+    useChat<ChatUIMessage>({
+      id: chatId,
+      messages: initialMessages as ChatUIMessage[],
+      transport,
+    })
   const [input, setInput] = useState("")
   const [selectedBotId, setSelectedBotId] = useState(members[0]?.id ?? "")
   const isBusy = status === "submitted" || status === "streaming"
   const selectedBot = members.find((bot) => bot.id === selectedBotId)
+  const uniqueMessages = Array.from(
+    new Map(messages.map((message) => [message.id, message] as const)).values(),
+  )
 
   useEffect(() => {
     if (!error?.message.includes("has reached its")) return
@@ -122,7 +127,7 @@ export function Chat({
     <section className="mx-auto flex min-h-0 w-full max-w-4xl min-w-0 flex-1 flex-col overflow-hidden px-4">
       <Conversation className="min-h-0 flex-1">
         <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-0 py-8">
-          {messages.length === 0 ? (
+          {uniqueMessages.length === 0 ? (
             <ConversationEmptyState
               className="min-h-[50vh]"
               icon={<Bot className="size-8" />}
@@ -136,7 +141,7 @@ export function Chat({
               }
             />
           ) : (
-            messages.map((message) => {
+            uniqueMessages.map((message) => {
               const botParts = message.parts.filter(
                 (part) => part.type === "data-bot"
               )
@@ -229,9 +234,22 @@ export function Chat({
 
       <div className="mx-auto w-full max-w-3xl pt-3 pb-6">
         {error && (
-          <p className="mb-2 text-sm text-destructive" role="alert">
-            Something went wrong. Please try again.
-          </p>
+          <div className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+            <p className="text-sm text-destructive" role="alert">
+              Something went wrong. Your message is still here; try again.
+            </p>
+            <Button
+              className="shrink-0"
+              disabled={isBusy}
+              onClick={() => void regenerate()}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <RotateCcw />
+              Retry
+            </Button>
+          </div>
         )}
         <form
           className="flex flex-col gap-2 rounded-2xl border bg-background p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring/30"

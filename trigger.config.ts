@@ -1,4 +1,23 @@
 import { defineConfig } from "@trigger.dev/sdk";
+import * as Sentry from "@sentry/node";
+
+let sentryInitialized = false;
+
+function initializeSentry() {
+  if (sentryInitialized) return;
+
+  const dsn = process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN;
+  if (!dsn) return;
+
+  Sentry.init({
+    dsn,
+    environment: process.env.SENTRY_ENVIRONMENT ?? process.env.NODE_ENV,
+    // Trigger.dev owns the worker's OpenTelemetry setup.
+    enableOpenTelemetrySetup: false,
+  });
+
+  sentryInitialized = true;
+}
 
 export default defineConfig({
   project: "proj_itlhdeisbgxbzpsklyah",
@@ -17,6 +36,21 @@ export default defineConfig({
       factor: 2,
       randomize: true,
     },
+  },
+  init: async () => {
+    initializeSentry();
+  },
+  onFailure: async ({ error, ctx, task }) => {
+    initializeSentry();
+    if (!sentryInitialized) return;
+
+    Sentry.withScope((scope) => {
+      scope.setTag("trigger_task_id", task);
+      scope.setTag("trigger_run_id", ctx.run.id);
+      Sentry.captureException(error);
+    });
+
+    await Sentry.flush(2_000);
   },
   dirs: ["trigger"],
 });

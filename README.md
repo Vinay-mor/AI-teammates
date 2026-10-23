@@ -39,6 +39,11 @@ DSN to `.env.local` as `NEXT_PUBLIC_SENTRY_DSN`; the server runtimes also accept
 `SENTRY_DSN` and fall back to the public DSN. Set `SENTRY_ENVIRONMENT` to override
 the default environment name (`development` or `production`). Tracing samples 100%
 of development traffic and 10% of production traffic.
+Session Replay records 100% of development sessions and 10% of production sessions,
+and records all sessions with errors. Text and inputs are masked and media is blocked.
+Structured Sentry logs are emitted from chat, bot, sandbox, and recoverable browser
+failure paths using the configured DSN. Log attributes exclude prompts, file contents,
+credentials, and raw exception messages.
 
 For production source maps, set `SENTRY_AUTH_TOKEN` in the build environment. Keep
 that token private; it is used by `next build` to upload source maps for the
