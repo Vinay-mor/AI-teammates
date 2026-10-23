@@ -1,13 +1,14 @@
 "use client"
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
-import { UserButton, useUser } from "@clerk/nextjs"
+import { UserButton, useAuth, useUser } from "@clerk/nextjs"
 import { formatDistanceToNowStrict } from "date-fns"
 import { usePathname, useRouter } from "next/navigation"
 import { PlusIcon, SearchIcon, UsersRoundIcon } from "lucide-react"
 import Link from "next/link"
 
 import { BotDialog } from "@/components/bot-dialog"
+import { showUpgradeToast } from "@/components/billing-toast"
 import { ChatAvatar } from "@/components/chat-avatar"
 import { GroupChatDialog } from "@/components/group-chat-dialog"
 import { GroupChatAvatar } from "@/components/group-chat-avatar"
@@ -100,12 +101,30 @@ export function AppSidebarClient({
     getServerSearchShortcut
   )
   const { user } = useUser()
+  const { has, isLoaded } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
   const userButtonRef = useRef<HTMLDivElement>(null)
   const userName =
     user?.fullName ??
     [user?.firstName, user?.lastName].filter(Boolean).join(" ")
+
+  function openCreateDialog(kind: "bot" | "group") {
+    if (!isLoaded) return
+
+    if (!has?.({ plan: "pro" })) {
+      showUpgradeToast(
+        kind === "bot"
+          ? "Upgrade to Pro to create bots and their sandboxes."
+          : "Upgrade to Pro to create group chats and use bots.",
+        () => router.push("/pricing"),
+      )
+      return
+    }
+
+    if (kind === "bot") setBotDialogOpen(true)
+    else setGroupChatDialogOpen(true)
+  }
 
   useEffect(() => {
     function handleSearchShortcut(event: KeyboardEvent) {
@@ -144,14 +163,14 @@ export function AppSidebarClient({
             className="w-80 rounded-2xl border border-neutral-800 bg-neutral-900 p-2 text-foreground shadow-xl"
           >
             <DropdownMenuItem
-              onClick={() => setBotDialogOpen(true)}
+              onClick={() => openCreateDialog("bot")}
               className="h-14 gap-4 rounded-xl px-4 text-lg focus:bg-neutral-800"
             >
               <PlusIcon className="size-5 text-neutral-400" />
               Create new bot
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => setGroupChatDialogOpen(true)}
+              onClick={() => openCreateDialog("group")}
               className="h-14 gap-4 rounded-xl px-4 text-lg focus:bg-neutral-800"
             >
               <UsersRoundIcon className="size-5 text-neutral-400" />

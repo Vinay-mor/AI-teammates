@@ -1,6 +1,8 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { useAuth } from "@clerk/nextjs"
+import { useRouter } from "next/navigation"
 import { MonitorIcon } from "lucide-react"
 
 import { BotDialog } from "@/components/bot-dialog"
@@ -9,6 +11,7 @@ import { GroupChatDialog } from "@/components/group-chat-dialog"
 import { GroupChatAvatar } from "@/components/group-chat-avatar"
 import { useChatLayout } from "@/components/chat-layout"
 import { Button } from "@/components/ui/button"
+import { showUpgradeToast } from "@/components/billing-toast"
 
 type EditableBot = {
   id: string
@@ -44,6 +47,8 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   const [editOpen, setEditOpen] = useState(false)
   const [groupEditOpen, setGroupEditOpen] = useState(false)
+  const { has, isLoaded } = useAuth()
+  const router = useRouter()
   const { isDesktopPanelOpen, toggleDesktopPanel } = useChatLayout()
   const group = useMemo(
     () =>
@@ -95,7 +100,17 @@ export function ChatHeader({
           size="icon-sm"
           aria-label="Toggle desktop panel"
           aria-expanded={isDesktopPanelOpen}
-          onClick={toggleDesktopPanel}
+          onClick={() => {
+            if (!isLoaded) return
+            if (!has?.({ plan: "pro" })) {
+              showUpgradeToast(
+                "Upgrade to connect to and use your bot's sandbox.",
+                () => router.push("/pricing"),
+              )
+              return
+            }
+            toggleDesktopPanel()
+          }}
           className="text-neutral-300 hover:bg-neutral-800 hover:text-white"
         >
           <MonitorIcon aria-hidden="true" className="size-4" />

@@ -24,6 +24,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { ChatAvatar } from "@/components/chat-avatar"
+import { showUpgradeToast } from "@/components/billing-toast"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -94,6 +95,10 @@ export function GroupChatDialog({
       ? await updateGroupChat(group.id, values)
       : await createGroupChat(values)
     if (!result.success) {
+      if ("upgradeRequired" in result && result.upgradeRequired) {
+        showUpgradeToast(result.error, () => router.push("/pricing"))
+        return
+      }
       form.setError("root.server", { message: result.error })
       return
     }

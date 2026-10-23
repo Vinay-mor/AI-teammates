@@ -10,6 +10,8 @@ import {
   LoaderCircle,
 } from "lucide-react"
 import { useState, type FormEvent } from "react"
+import { useAuth } from "@clerk/nextjs"
+import { useRouter } from "next/navigation"
 
 import {
   Conversation,
@@ -41,6 +43,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ChatAvatar } from "@/components/chat-avatar"
+import { showUpgradeToast } from "@/components/billing-toast"
 import type { ChatUIMessage, chatAgent } from "@/trigger/chat"
 import type { useTriggerChatTransport } from "@trigger.dev/sdk/chat/react"
 
@@ -67,6 +70,8 @@ export function Chat({
   initialMessages: UIMessage[]
   transport: ChatTransport
 }) {
+  const { has, isLoaded } = useAuth()
+  const router = useRouter()
   const { messages, sendMessage, status, error } = useChat<ChatUIMessage>({
     id: chatId,
     messages: initialMessages as ChatUIMessage[],
@@ -80,7 +85,15 @@ export function Chat({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const text = input.trim()
-    if (!text || isBusy) return
+    if (!text || isBusy || !isLoaded) return
+
+    if (isLoaded && !has?.({ plan: "pro" })) {
+      showUpgradeToast(
+        "Upgrade to send messages and use your bots and sandboxes.",
+        () => router.push("/pricing"),
+      )
+      return
+    }
 
     sendMessage(
       { text, metadata: { selectedBotId } },
@@ -262,7 +275,10 @@ export function Chat({
               aria-label="Send message"
               className="rounded-xl"
               disabled={
-                !input.trim() || isBusy || (kind === "group" && !selectedBotId)
+                !isLoaded ||
+                !input.trim() ||
+                isBusy ||
+                (kind === "group" && !selectedBotId)
               }
               size="icon"
               type="submit"

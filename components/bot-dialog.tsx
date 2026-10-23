@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { useAuth } from "@clerk/nextjs"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { nanoid } from "nanoid"
 import { Controller, useForm } from "react-hook-form"
@@ -9,6 +10,7 @@ import { ShuffleIcon, Trash2Icon } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { createBot, deleteBot, updateBot } from "@/action/bot"
+import { showUpgradeToast } from "@/components/billing-toast"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +31,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   Field,
@@ -98,6 +99,7 @@ function BotDialog({
   const [avatar, setAvatar] = useState(() => bot?.avatar ?? nanoid())
   const wasOpenRef = useRef(false)
   const router = useRouter()
+  const { has, isLoaded } = useAuth()
   const form = useForm<BotFormValues>({
     resolver: zodResolver(botFormSchema),
     defaultValues: {
@@ -149,12 +151,30 @@ function BotDialog({
     }
   }
 
+  function handleCreateClick() {
+    if (!isLoaded) return
+
+    if (!has?.({ plan: "pro" })) {
+      showUpgradeToast(
+        "Upgrade to Pro to create bots and their sandboxes.",
+        () => router.push("/pricing"),
+      )
+      return
+    }
+
+    handleOpenChange(true)
+  }
+
   async function onSubmit(values: BotFormValues) {
     const result = bot
       ? await updateBot(bot.id, values)
       : await createBot(values)
 
     if (!result.success) {
+      if (result.upgradeRequired) {
+        showUpgradeToast(result.error, () => router.push("/pricing"))
+        return
+      }
       form.setError("root.server", { message: result.error })
       return
     }
@@ -212,17 +232,15 @@ function BotDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {!hideTrigger && (
-        <DialogTrigger
-          render={
-            <Button
-              variant="secondary"
-              size="lg"
-              className="h-11 rounded-xl px-4 text-base"
-            />
-          }
+        <Button
+          type="button"
+          variant="secondary"
+          size="lg"
+          className="h-11 rounded-xl px-4 text-base"
+          onClick={bot ? () => handleOpenChange(true) : handleCreateClick}
         >
           Create a new bot
-        </DialogTrigger>
+        </Button>
       )}
       <DialogContent className="dark max-h-[calc(100svh-2rem)] max-w-[52rem] gap-0 overflow-y-auto rounded-[1.25rem] border border-border bg-popover p-0 text-base shadow-2xl sm:max-w-[52rem]">
         <form onSubmit={form.handleSubmit(onSubmit)}>

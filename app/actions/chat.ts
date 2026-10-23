@@ -5,6 +5,7 @@ import { chat, defaultStorage } from "@trigger.dev/sdk/ai"
 
 import { getDaytonaClient } from "@/lib/daytona-client"
 import { getChat } from "@/queries/chats"
+import { requirePaidPlan } from "@/lib/billing"
 import type { chatAgent } from "@/trigger/chat"
 
 const startTriggerChatSession =
@@ -15,6 +16,7 @@ const loadTriggerChatTranscript =
 const VNC_PREVIEW_PORT = 6080
 
 export async function getChatVncPreviewUrl(chatId: string) {
+  await requirePaidPlan()
   const existingChat = await getChat(chatId)
   const sandboxId = existingChat?.bot?.sandboxId
 
@@ -44,6 +46,7 @@ export async function getChatVncPreviewUrl(chatId: string) {
 }
 
 export async function startChatSession({ chatId }: { chatId: string }) {
+  await requirePaidPlan()
   const existingChat = await getChat(chatId)
 
   if (!existingChat) throw new Error("Chat not found")
@@ -71,6 +74,7 @@ export async function startChatSession({ chatId }: { chatId: string }) {
 }
 
 export async function mintChatAccessToken(chatId: string) {
+  await requirePaidPlan()
   const existingChat = await getChat(chatId)
 
   if (!existingChat) throw new Error("Chat not found")

@@ -8,14 +8,26 @@ import { ZodError, z } from "zod"
 import { db } from "@/db"
 import { bots, chatMembers, chats } from "@/db/schema"
 import { insertGroupChatSchema } from "@/db/validators"
+import { hasPaidPlan } from "@/lib/billing"
 
 export async function createGroupChat(
   input: unknown
-): Promise<{ success: true; id: string } | { success: false; error: string }> {
+): Promise<
+  | { success: true; id: string }
+  | { success: false; error: string; upgradeRequired?: boolean }
+> {
   const { userId } = await auth()
 
   if (!userId) {
     return { success: false, error: "Sign in before creating a group chat." }
+  }
+
+  if (!(await hasPaidPlan())) {
+    return {
+      success: false,
+      error: "A paid plan is required to use bots and create group chats.",
+      upgradeRequired: true,
+    }
   }
 
   let groupInput

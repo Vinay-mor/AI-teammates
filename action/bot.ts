@@ -9,16 +9,26 @@ import { ZodError, z } from "zod"
 import { db } from "@/db"
 import { bots, chatMembers, chats } from "@/db/schema"
 import { insertBotSchema } from "@/db/validators"
+import { hasPaidPlan } from "@/lib/billing"
 import { createBotSandbox, deleteBotSandbox } from "@/lib/daytona"
 
 type CreateBotResult =
-  { success: true; id: string } | { success: false; error: string }
+  | { success: true; id: string }
+  | { success: false; error: string; upgradeRequired?: boolean }
 
 export async function createBot(input: unknown): Promise<CreateBotResult> {
   const { userId } = await auth()
 
   if (!userId) {
     return { success: false, error: "Sign in before creating a bot." }
+  }
+
+  if (!(await hasPaidPlan())) {
+    return {
+      success: false,
+      error: "A paid plan is required to create bots and sandboxes.",
+      upgradeRequired: true,
+    }
   }
 
   let botInput
