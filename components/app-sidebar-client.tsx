@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { UserButton, useAuth, useUser } from "@clerk/nextjs"
 import { formatDistanceToNowStrict } from "date-fns"
 import { usePathname, useRouter } from "next/navigation"
-import { PlusIcon, SearchIcon, UsersRoundIcon } from "lucide-react"
+import { ChartNoAxesColumnIncreasingIcon, PlusIcon, SearchIcon, UsersRoundIcon } from "lucide-react"
 import Link from "next/link"
 
 import { BotDialog } from "@/components/bot-dialog"
@@ -320,7 +320,15 @@ export function AppSidebarClient({
                         "size-6 group-data-[collapsible=icon]:size-6",
                     },
                   }}
-                />
+                >
+                  <UserButton.MenuItems>
+                    <UserButton.Link
+                      label="Usage"
+                      labelIcon={<ChartNoAxesColumnIncreasingIcon className="size-4" />}
+                      href="/usage"
+                    />
+                  </UserButton.MenuItems>
+                </UserButton>
               </div>
               {userName && (
                 <span className="pointer-events-none relative z-10 min-w-0 truncate pl-8 text-sm font-medium text-sidebar-foreground group-data-[collapsible=icon]:hidden">

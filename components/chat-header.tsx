@@ -82,14 +82,7 @@ export function ChatHeader({
         </Button>
       ) : (
         <div className="flex min-w-0 items-center gap-2">
-          {kind === "group" ? (
-            <GroupChatAvatar
-              avatars={members.map((member) => member.avatar)}
-              className="size-4"
-            />
-          ) : (
-            <ChatAvatar seed={avatar} className="size-4" />
-          )}
+          <ChatAvatar seed={avatar} className="size-4" />
           <span className="truncate text-xs font-semibold">{name}</span>
         </div>
       )}

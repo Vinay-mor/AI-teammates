@@ -8,7 +8,10 @@ export { BOT_MEMORY_PATH } from "@/lib/bot-memory"
 
 export async function createBotSandbox(botId: string) {
   const daytona = getDaytonaClient()
-  const sandbox = await daytona.create({ name: `bot-${botId}` })
+  const sandbox = await daytona.create({
+    name: `bot-${botId}`,
+    autoStopInterval: 15,
+  })
 
   try {
     const result = await sandbox.process.executeCommand(
@@ -20,6 +23,7 @@ export async function createBotSandbox(botId: string) {
     if (result.exitCode !== 0) {
       throw new Error(`Failed to create ${BOT_MEMORY_PATH} in the sandbox.`)
     }
+    await sandbox.stop()
   } catch (error) {
     try {
       await daytona.delete(sandbox, 60, true)

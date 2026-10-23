@@ -2,11 +2,13 @@ import { nanoid } from "nanoid";
 import { relations } from "drizzle-orm";
 import {
   index,
+  bigint,
   pgEnum,
   pgTable,
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const chatKind = pgEnum("chat_kind", ["direct", "group"]);
@@ -77,6 +79,58 @@ export const googleApiRateLimits = pgTable("google_api_rate_limits", {
     .notNull()
     .defaultNow(),
 });
+
+export const usagePeriods = pgTable(
+  "usage_periods",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    userId: text("user_id").notNull(),
+    subscriptionItemId: text("subscription_item_id").notNull(),
+    periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
+    periodEnd: timestamp("period_end", { withTimezone: true }).notNull(),
+    inputTokens: bigint("input_tokens", { mode: "number" }).notNull().default(0),
+    outputTokens: bigint("output_tokens", { mode: "number" }).notNull().default(0),
+    sandboxSeconds: bigint("sandbox_seconds", { mode: "number" }).notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("usage_periods_user_subscription_period_idx").on(
+      table.userId,
+      table.subscriptionItemId,
+      table.periodStart,
+    ),
+    index("usage_periods_user_id_idx").on(table.userId),
+  ],
+);
+
+export const usageLedgerEntries = pgTable(
+  "usage_ledger_entries",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    periodId: text("period_id")
+      .notNull()
+      .references(() => usagePeriods.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    resource: text("resource", {
+      enum: ["input_tokens", "output_tokens", "sandbox_seconds"],
+    }).notNull(),
+    amount: bigint("amount", { mode: "number" }).notNull(),
+    eventKey: text("event_key").notNull().unique(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("usage_ledger_entries_period_id_idx").on(table.periodId)],
+);
 
 export const botsRelations = relations(bots, ({ many }) => ({
   chatMembers: many(chatMembers),

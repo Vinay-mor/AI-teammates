@@ -9,8 +9,10 @@ import {
   type ReactNode,
 } from "react"
 import { usePanelRef } from "react-resizable-panels"
+import { useRouter } from "next/navigation"
 
 import { getChatVncPreviewUrl } from "@/app/actions/chat"
+import { toast } from "@/components/ui/toast"
 import {
   ResizableHandle,
   ResizablePanel,
@@ -54,6 +56,7 @@ export function ChatLayout({
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const panelHostRef = useRef<HTMLDivElement | null>(null)
   const previewPanelRef = usePanelRef()
+  const router = useRouter()
 
   useEffect(() => {
     if (isDesktopPanelOpen) previewPanelRef.current?.expand()
@@ -66,10 +69,24 @@ export function ChatLayout({
     requestStarted.current = true
     getChatVncPreviewUrl(chatId)
       .then(setPreviewUrl)
-      .catch(() => {
+      .catch((error: unknown) => {
         setPreviewError("Could not connect to this Daytona desktop.")
+        const message = error instanceof Error ? error.message : ""
+        if (message.includes("has reached its")) {
+          toast.add({
+            title: "Usage limit reached",
+            description: message,
+            type: "error",
+            priority: "high",
+            timeout: 8000,
+            actionProps: {
+              children: "View usage",
+              onClick: () => router.push("/usage"),
+            },
+          })
+        }
       })
-  }, [chatId, isDesktopPanelOpen, sandboxId])
+  }, [chatId, isDesktopPanelOpen, sandboxId, router])
 
   useEffect(() => {
     if (!previewUrl) return

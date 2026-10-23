@@ -2,7 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server"
 import { revalidatePath } from "next/cache"
-import { and, eq, inArray } from "drizzle-orm"
+import { and, count, eq, inArray, sql } from "drizzle-orm"
 import { nanoid } from "nanoid"
 import { ZodError, z } from "zod"
 
@@ -11,6 +11,7 @@ import { bots, chatMembers, chats } from "@/db/schema"
 import { insertBotSchema } from "@/db/validators"
 import { hasPaidPlan } from "@/lib/billing"
 import { createBotSandbox, deleteBotSandbox } from "@/lib/daytona"
+import { MAX_PRO_BOTS, reserveUsage, settleUsageReservation, UsageLimitError } from "@/lib/usage"
 
 type CreateBotResult =
   | { success: true; id: string }
@@ -47,15 +48,53 @@ export async function createBot(input: unknown): Promise<CreateBotResult> {
     throw error
   }
 
+  const [{ botCount }] = await db
+    .select({ botCount: count() })
+    .from(bots)
+    .where(eq(bots.userId, userId))
+  if (botCount >= MAX_PRO_BOTS) {
+    return {
+      success: false,
+      error: `Your Pro plan supports up to ${MAX_PRO_BOTS} bots and sandboxes. Delete a bot before creating another.`,
+    }
+  }
+
   let cleanupSandbox: (() => Promise<void>) | undefined
   let createdBotId: string
+  const botId = nanoid()
+  const sandboxUsageKey = `sandbox:create:${botId}`
+  const reservedSandboxSeconds = 15 * 60
+  const sandboxStartedAt = Date.now()
+  let sandboxUsageReserved = false
 
   try {
-    const botId = nanoid()
+    await reserveUsage({
+      userId,
+      resource: "sandbox_seconds",
+      amount: reservedSandboxSeconds,
+      eventKey: `${sandboxUsageKey}:reserve`,
+    })
+    sandboxUsageReserved = true
     const sandbox = await createBotSandbox(botId)
     cleanupSandbox = sandbox.cleanup
+    await settleUsageReservation({
+      userId,
+      resource: "sandbox_seconds",
+      reserved: reservedSandboxSeconds,
+      actual: Math.max(1, Math.ceil((Date.now() - sandboxStartedAt) / 1000)),
+      eventKey: `${sandboxUsageKey}:settle`,
+      reservationEventKey: `${sandboxUsageKey}:reserve`,
+    })
+    sandboxUsageReserved = false
 
     const bot = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${userId}))`)
+      const [{ botCount: currentBotCount }] = await tx
+        .select({ botCount: count() })
+        .from(bots)
+        .where(eq(bots.userId, userId))
+      if (currentBotCount >= MAX_PRO_BOTS) return null
+
       const [createdBot] = await tx
         .insert(bots)
         .values({
@@ -79,8 +118,29 @@ export async function createBot(input: unknown): Promise<CreateBotResult> {
       return createdBot
     })
 
+    if (!bot) {
+      if (cleanupSandbox) await cleanupSandbox()
+      cleanupSandbox = undefined
+      return {
+        success: false,
+        error: `Your Pro plan supports up to ${MAX_PRO_BOTS} bots and sandboxes. Delete a bot before creating another.`,
+      }
+    }
+
     createdBotId = bot.id
-  } catch {
+  } catch (error) {
+    if (sandboxUsageReserved) try {
+      await settleUsageReservation({
+        userId,
+        resource: "sandbox_seconds",
+        reserved: reservedSandboxSeconds,
+        actual: Math.max(1, Math.ceil((Date.now() - sandboxStartedAt) / 1000)),
+        eventKey: `${sandboxUsageKey}:settle`,
+        reservationEventKey: `${sandboxUsageKey}:reserve`,
+      })
+    } catch (usageError) {
+      console.error("Failed to settle sandbox creation usage.", usageError)
+    }
     if (cleanupSandbox) {
       try {
         await cleanupSandbox()
@@ -92,6 +152,9 @@ export async function createBot(input: unknown): Promise<CreateBotResult> {
       }
     }
 
+    if (error instanceof UsageLimitError) {
+      return { success: false, error: error.message }
+    }
     return {
       success: false,
       error: "We couldn't create your bot. Please try again.",

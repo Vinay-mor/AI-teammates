@@ -2,8 +2,9 @@
 
 import { auth as triggerAuth } from "@trigger.dev/sdk"
 import { chat, defaultStorage } from "@trigger.dev/sdk/ai"
+import { auth } from "@clerk/nextjs/server"
 
-import { getDaytonaClient } from "@/lib/daytona-client"
+import { getMeteredSandbox } from "@/lib/daytona-usage"
 import { getChat } from "@/queries/chats"
 import { requirePaidPlan } from "@/lib/billing"
 import type { chatAgent } from "@/trigger/chat"
@@ -14,18 +15,20 @@ const loadTriggerChatTranscript =
   chat.createLoadTranscriptAction(defaultStorage)
 
 const VNC_PREVIEW_PORT = 6080
+const VNC_PREVIEW_TTL_SECONDS = 15 * 60
 
 export async function getChatVncPreviewUrl(chatId: string) {
+  const { userId } = await auth()
+  if (!userId) throw new Error("Sign in to connect to this sandbox.")
   await requirePaidPlan()
   const existingChat = await getChat(chatId)
   const sandboxId = existingChat?.bot?.sandboxId
 
   if (!sandboxId) throw new Error("This chat has no Daytona sandbox.")
 
-  const daytona = getDaytonaClient()
-  const sandbox = await daytona.get(sandboxId)
-
-  if (sandbox.state !== "started") await sandbox.start()
+  const sandbox = await getMeteredSandbox(sandboxId, userId, {
+    chargeIfAlreadyStarted: true,
+  })
 
   const computerUseStatus = await sandbox.computerUse.getStatus()
   if (
@@ -35,7 +38,10 @@ export async function getChatVncPreviewUrl(chatId: string) {
     await sandbox.computerUse.start()
   }
 
-  const preview = await sandbox.getSignedPreviewUrl(VNC_PREVIEW_PORT, 3600)
+  const preview = await sandbox.getSignedPreviewUrl(
+    VNC_PREVIEW_PORT,
+    VNC_PREVIEW_TTL_SECONDS,
+  )
   const previewUrl = new URL("/vnc.html", preview.url)
   previewUrl.searchParams.set("autoconnect", "1")
   previewUrl.searchParams.set("resize", "scale")
@@ -46,6 +52,8 @@ export async function getChatVncPreviewUrl(chatId: string) {
 }
 
 export async function startChatSession({ chatId }: { chatId: string }) {
+  const { userId } = await auth()
+  if (!userId) throw new Error("Sign in to start this chat.")
   await requirePaidPlan()
   const existingChat = await getChat(chatId)
 

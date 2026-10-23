@@ -1,22 +1,21 @@
 import { tool } from "ai"
 import { z } from "zod"
-import { getDaytonaClient } from "@/lib/daytona-client"
+import { getMeteredSandbox } from "@/lib/daytona-usage"
 
 const MAX_COMMAND_OUTPUT = 16_000
 const MAX_FILE_CONTENT = 100_000
 
-async function getSandbox(sandboxId: string | null | undefined) {
+async function getSandbox(sandboxId: string | null | undefined, userId: string | undefined) {
   if (!sandboxId) {
     throw new Error("This AI teammate does not have a Daytona sandbox.")
   }
+  if (!userId) throw new Error("Could not verify the account for this sandbox operation.")
 
-  const sandbox = await getDaytonaClient().get(sandboxId)
-  if (sandbox.state !== "started") await sandbox.start()
-  return sandbox
+  return getMeteredSandbox(sandboxId, userId)
 }
 
-async function getComputerSandbox(sandboxId: string | null | undefined) {
-  const sandbox = await getSandbox(sandboxId)
+async function getComputerSandbox(sandboxId: string | null | undefined, userId: string | undefined) {
+  const sandbox = await getSandbox(sandboxId, userId)
   const status = await sandbox.computerUse.getStatus()
   if (status.status !== "running" && status.status !== "active") {
     await sandbox.computerUse.start()
@@ -24,14 +23,14 @@ async function getComputerSandbox(sandboxId: string | null | undefined) {
   return sandbox
 }
 
-function screenshotTool(sandboxId: string | null | undefined, visible: boolean) {
+function screenshotTool(sandboxId: string | null | undefined, userId: string | undefined, visible: boolean) {
   return tool({
     description: visible
       ? "Capture the current desktop and show the screenshot to the user. Use only when the user asks to see the screen or requests a screenshot."
       : "Capture the current desktop for your own visual inspection. The screenshot is sent to you but is hidden from the chat UI. Use this before and after desktop actions when you need visual context.",
     inputSchema: z.object({}),
     execute: async (_input: {}) => {
-      const sandbox = await getComputerSandbox(sandboxId)
+      const sandbox = await getComputerSandbox(sandboxId, userId)
       const { screenshot, sizeBytes } =
         await sandbox.computerUse.screenshot.takeCompressed({
           format: "jpeg",
@@ -58,7 +57,7 @@ function screenshotTool(sandboxId: string | null | undefined, visible: boolean) 
   })
 }
 
-export function createChatTools(sandboxId: string | null | undefined) {
+export function createChatTools(sandboxId: string | null | undefined, userId: string | undefined) {
   return {
     bash: tool({
       description:
@@ -68,7 +67,7 @@ export function createChatTools(sandboxId: string | null | undefined) {
         cwd: z.string().max(1_000).optional().describe("Working directory in the sandbox"),
       }),
       execute: async ({ command, cwd }) => {
-        const sandbox = await getSandbox(sandboxId)
+        const sandbox = await getSandbox(sandboxId, userId)
         const result = await sandbox.process.executeCommand(command, cwd, undefined, 60)
         const output = result.result ?? ""
         return {
@@ -84,7 +83,7 @@ export function createChatTools(sandboxId: string | null | undefined) {
       description: "Read a text file from this teammate's Daytona sandbox.",
       inputSchema: z.object({ path: z.string().min(1).max(2_000) }),
       execute: async ({ path }) => {
-        const sandbox = await getSandbox(sandboxId)
+        const sandbox = await getSandbox(sandboxId, userId)
         const content = (await sandbox.fs.downloadFile(path)).toString("utf8")
         return content.length > MAX_FILE_CONTENT
           ? `${content.slice(0, MAX_FILE_CONTENT)}\n[File content truncated]`
@@ -98,7 +97,7 @@ export function createChatTools(sandboxId: string | null | undefined) {
         content: z.string().max(MAX_FILE_CONTENT),
       }),
       execute: async ({ path, content }) => {
-        const sandbox = await getSandbox(sandboxId)
+        const sandbox = await getSandbox(sandboxId, userId)
         await sandbox.fs.uploadFile(Buffer.from(content, "utf8"), path)
         return { path, bytesWritten: Buffer.byteLength(content, "utf8") }
       },
@@ -110,7 +109,7 @@ export function createChatTools(sandboxId: string | null | undefined) {
         depth: z.number().int().min(1).max(3).default(1),
       }),
       execute: async ({ path, depth }) => {
-        const sandbox = await getSandbox(sandboxId)
+        const sandbox = await getSandbox(sandboxId, userId)
         return sandbox.fs.listFiles(path, { depth })
       },
     }),
@@ -123,7 +122,7 @@ export function createChatTools(sandboxId: string | null | undefined) {
         double: z.boolean().default(false),
       }),
       execute: async ({ x, y, button, double }) => {
-        const sandbox = await getComputerSandbox(sandboxId)
+        const sandbox = await getComputerSandbox(sandboxId, userId)
         return sandbox.computerUse.mouse.click(x, y, button, double)
       },
     }),
@@ -134,7 +133,7 @@ export function createChatTools(sandboxId: string | null | undefined) {
         y: z.number().int().min(0).max(10_000),
       }),
       execute: async ({ x, y }) => {
-        const sandbox = await getComputerSandbox(sandboxId)
+        const sandbox = await getComputerSandbox(sandboxId, userId)
         return sandbox.computerUse.mouse.move(x, y)
       },
     }),
@@ -147,7 +146,7 @@ export function createChatTools(sandboxId: string | null | undefined) {
         amount: z.number().int().min(1).max(20).default(3),
       }),
       execute: async ({ x, y, direction, amount }) => {
-        const sandbox = await getComputerSandbox(sandboxId)
+        const sandbox = await getComputerSandbox(sandboxId, userId)
         return sandbox.computerUse.mouse.scroll(x, y, direction, amount)
       },
     }),
@@ -155,7 +154,7 @@ export function createChatTools(sandboxId: string | null | undefined) {
       description: "Type text into the currently focused desktop control.",
       inputSchema: z.object({ text: z.string().max(10_000) }),
       execute: async ({ text }) => {
-        const sandbox = await getComputerSandbox(sandboxId)
+        const sandbox = await getComputerSandbox(sandboxId, userId)
         await sandbox.computerUse.keyboard.type(text)
         return { typedCharacters: text.length }
       },
@@ -168,12 +167,12 @@ export function createChatTools(sandboxId: string | null | undefined) {
         modifiers: z.array(z.enum(["ctrl", "shift", "alt", "cmd"])).max(4).default([]),
       }),
       execute: async ({ key, modifiers }) => {
-        const sandbox = await getComputerSandbox(sandboxId)
+        const sandbox = await getComputerSandbox(sandboxId, userId)
         await sandbox.computerUse.keyboard.press(key, modifiers)
         return { pressed: key, modifiers }
       },
     }),
-    viewScreen: screenshotTool(sandboxId, false),
-    showScreen: screenshotTool(sandboxId, true),
+    viewScreen: screenshotTool(sandboxId, userId, false),
+    showScreen: screenshotTool(sandboxId, userId, true),
   }
 }

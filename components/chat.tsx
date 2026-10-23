@@ -9,7 +9,7 @@ import {
   CircleAlert,
   LoaderCircle,
 } from "lucide-react"
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 
@@ -44,6 +44,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ChatAvatar } from "@/components/chat-avatar"
 import { showUpgradeToast } from "@/components/billing-toast"
+import { toast } from "@/components/ui/toast"
 import type { ChatUIMessage, chatAgent } from "@/trigger/chat"
 import type { useTriggerChatTransport } from "@trigger.dev/sdk/chat/react"
 
@@ -81,6 +82,21 @@ export function Chat({
   const [selectedBotId, setSelectedBotId] = useState(members[0]?.id ?? "")
   const isBusy = status === "submitted" || status === "streaming"
   const selectedBot = members.find((bot) => bot.id === selectedBotId)
+
+  useEffect(() => {
+    if (!error?.message.includes("has reached its")) return
+    toast.add({
+      title: "Usage limit reached",
+      description: error.message,
+      type: "error",
+      priority: "high",
+      timeout: 8000,
+      actionProps: {
+        children: "View usage",
+        onClick: () => router.push("/usage"),
+      },
+    })
+  }, [error, router])
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

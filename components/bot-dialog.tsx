@@ -171,8 +171,22 @@ function BotDialog({
       : await createBot(values)
 
     if (!result.success) {
-      if (result.upgradeRequired) {
+      if ("upgradeRequired" in result && result.upgradeRequired) {
         showUpgradeToast(result.error, () => router.push("/pricing"))
+        return
+      }
+      if (result.error.includes("supports up to")) {
+        toast.add({
+          title: "Bot limit reached",
+          description: result.error,
+          type: "error",
+          priority: "high",
+          timeout: 8000,
+          actionProps: {
+            children: "View usage",
+            onClick: () => router.push("/usage"),
+          },
+        })
         return
       }
       form.setError("root.server", { message: result.error })
