@@ -12,7 +12,16 @@ export async function readBotMemory(
 
   try {
     const sandbox = await getMeteredSandbox(sandboxId, userId)
-    const memory = (await sandbox.fs.downloadFile(BOT_MEMORY_PATH)).toString("utf8")
+    const result = await sandbox.process.executeCommand(
+      `cat -- '${BOT_MEMORY_PATH}'`,
+      undefined,
+      undefined,
+      60,
+    )
+    if (result.exitCode !== 0) {
+      throw new Error(`Failed to read ${BOT_MEMORY_PATH} from the sandbox.`)
+    }
+    const memory = result.result ?? ""
     Sentry.logger.info("bot.memory.read", {
       "app.sandbox.id": sandboxId,
       "app.memory.byte_length": Buffer.byteLength(memory, "utf8"),

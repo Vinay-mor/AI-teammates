@@ -84,7 +84,17 @@ export function createChatTools(sandboxId: string | null | undefined, userId: st
       inputSchema: z.object({ path: z.string().min(1).max(2_000) }),
       execute: async ({ path }) => {
         const sandbox = await getSandbox(sandboxId, userId)
-        const content = (await sandbox.fs.downloadFile(path)).toString("utf8")
+        const quotedPath = `'${path.replaceAll("'", "'\\''")}'`
+        const result = await sandbox.process.executeCommand(
+          `cat -- ${quotedPath}`,
+          undefined,
+          undefined,
+          60,
+        )
+        if (result.exitCode !== 0) {
+          throw new Error(`Failed to read ${path} from the sandbox.`)
+        }
+        const content = result.result ?? ""
         return content.length > MAX_FILE_CONTENT
           ? `${content.slice(0, MAX_FILE_CONTENT)}\n[File content truncated]`
           : content
