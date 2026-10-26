@@ -23,7 +23,9 @@ export default defineConfig({
   project: "proj_itlhdeisbgxbzpsklyah",
   runtime: "node-24",
   build: {
-    external: ["@daytona/sdk"],
+    // Daytona resolves busboy dynamically, so Trigger.dev cannot discover it
+    // from the SDK's imports when the SDK itself is externalized.
+    external: ["@daytona/sdk", "busboy"],
   },
   logLevel: "log",
   // The max compute seconds a task is allowed to run. If the task run exceeds this duration, it will be stopped.
