@@ -1,5 +1,4 @@
 import { defineConfig } from "@trigger.dev/sdk";
-import { additionalPackages } from "@trigger.dev/build/extensions/core";
 import * as Sentry from "@sentry/node";
 
 let sentryInitialized = false;
@@ -24,12 +23,7 @@ export default defineConfig({
   project: "proj_itlhdeisbgxbzpsklyah",
   runtime: "node-24",
   build: {
-    external: ["busboy", "form-data"],
-    extensions: [
-      additionalPackages({
-        packages: ["busboy@1.6.0", "form-data@4.0.6"],
-      }),
-    ],
+    external: ["@daytona/sdk"],
   },
   logLevel: "log",
   // The max compute seconds a task is allowed to run. If the task run exceeds this duration, it will be stopped.
